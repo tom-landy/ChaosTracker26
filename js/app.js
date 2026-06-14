@@ -1,0 +1,487 @@
+/*
+ * ChaosTracker26 — main app logic.
+ * Plain DOM, no framework, no build step. State persists to localStorage and
+ * every visible stat is derived live from: base profile + mark + Gaze of the
+ * Gods rewards + active spell effects + casualties.
+ */
+(function () {
+  "use strict";
+  const D = window.WOC_DATA;
+  const P = window.WOC_PARSER;
+  const STORE_KEY = "chaostracker26.v1";
+
+  // ---- state ---------------------------------------------------------------
+  let state = load() || { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS) };
+  if (!state.gaze) state.gaze = clone(D.GAZE_REWARDS);
+
+  function clone(x) { return JSON.parse(JSON.stringify(x)); }
+  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
+  function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; } }
+
+  // ---- derived stats -------------------------------------------------------
+  // Sum numeric mods from mark + rewards + effects onto the base profile.
+  function effective(unit) {
+    const base = unit.profile;
+    const eff = {};
+    for (const k of D.STATS) eff[k] = num(base[k]);
+    eff.Sv = base.Sv; eff.Ward = base.Ward;
+    const rules = [];
+    const sources = [];
+
+    function applyMods(mods, rls, label) {
+      if (mods) for (const k in mods) {
+        if (k === "Ward") { eff.Ward = bestSave(eff.Ward, mods.Ward); }
+        else if (k === "Sv") { eff.Sv = bestSave(eff.Sv, mods.Sv); }
+        else if (k in eff) eff[k] = (num(eff[k]) || 0) + mods[k];
+      }
+      if (rls) for (const r of rls) rules.push({ text: r, src: label });
+    }
+
+    if (unit.mark && D.MARKS[unit.mark]) {
+      const m = D.MARKS[unit.mark];
+      applyMods(m.mods, m.rules, "mark");
+      sources.push(m.name);
+    }
+    for (const rid of unit.rewards || []) {
+      const r = findReward(rid);
+      if (r) applyMods(r.mods, r.rules, "gaze");
+    }
+    for (const ef of unit.effects || []) {
+      applyMods(ef.mods, ef.rules, ef.kind === "hex" ? "hex" : "aug");
+    }
+    return { eff, base, rules, sources };
+  }
+
+  function bestSave(a, b) {
+    // saves: lower is better; null means none.
+    if (a == null) return b;
+    if (b == null) return a;
+    return Math.min(a, b);
+  }
+  function num(v) { const n = parseInt(v, 10); return isNaN(n) ? "" : n; }
+  function findReward(rid) {
+    if (typeof rid === "object") return rid; // inline custom reward
+    return state.gaze.find((r) => r.id === rid);
+  }
+
+  function modelsRemaining(u) { return Math.max(0, (u.models || 0) - (u.modelsLost || 0)); }
+  function rankInfo(u) {
+    const rem = modelsRemaining(u);
+    const w = Math.max(1, u.width || 5);
+    const ranks = Math.floor(rem / w);
+    const rankBonus = w >= 5 ? Math.min(3, Math.max(0, ranks - 1)) : 0;
+    return { rem, ranks, rankBonus, full: rem >= w };
+  }
+
+  // ---- rendering -----------------------------------------------------------
+  const $ = (sel, el) => (el || document).querySelector(sel);
+  const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
+  function el(tag, attrs, children) {
+    const n = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      if (k === "class") n.className = attrs[k];
+      else if (k === "html") n.innerHTML = attrs[k];
+      else if (k.startsWith("on") && typeof attrs[k] === "function") n.addEventListener(k.slice(2), attrs[k]);
+      else if (attrs[k] != null) n.setAttribute(k, attrs[k]);
+    }
+    for (const c of [].concat(children || [])) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+    return n;
+  }
+
+  function render() {
+    $("#armyName").value = state.meta.name || "";
+    $("#armyPoints").textContent = state.meta.points ? state.meta.points + " pts" : "";
+    const root = $("#roster");
+    root.innerHTML = "";
+    if (!state.units.length) {
+      root.append(el("div", { class: "empty" }, [
+        el("p", { html: "No units yet." }),
+        el("p", { class: "muted", html: "Tap <b>Import list</b> to paste your Old World Builder army, or <b>Add unit</b> to build one by hand." }),
+      ]));
+      return;
+    }
+    const cats = ["Characters", "Core", "Special", "Rare", "Allies"];
+    const order = {}; cats.forEach((c, i) => (order[c] = i));
+    const sorted = [...state.units].sort((a, b) => (order[a.category] ?? 9) - (order[b.category] ?? 9));
+    let lastCat = null;
+    for (const u of sorted) {
+      if (u.category !== lastCat) { root.append(el("h2", { class: "cat" }, u.category)); lastCat = u.category; }
+      root.append(unitCard(u));
+    }
+  }
+
+  function statCell(label, val, base, lowerBetter) {
+    const changed = val !== "" && base !== "" && num(val) !== num(base);
+    const cls = "stat" + (changed ? " changed" : "");
+    return el("div", { class: cls }, [
+      el("div", { class: "stat-l" }, label),
+      el("div", { class: "stat-v" }, [
+        String(val === "" || val == null ? "–" : val),
+        changed ? el("span", { class: "stat-b" }, "(" + (base === "" ? "–" : base) + ")") : null,
+      ]),
+    ]);
+  }
+
+  function unitCard(u) {
+    const { eff, base, rules } = effective(u);
+    const ri = rankInfo(u);
+    const card = el("div", { class: "card" + (modelsRemaining(u) <= 0 ? " dead" : "") });
+
+    // header
+    const title = el("input", {
+      class: "u-name", value: u.name, placeholder: "Unit name",
+      onchange: (e) => { u.name = e.target.value; save(); },
+    });
+    const markSel = el("select", { class: "mark", onchange: (e) => { u.mark = e.target.value || null; save(); render(); } });
+    markSel.append(el("option", { value: "" }, "No mark"));
+    for (const k in D.MARKS) markSel.append(el("option", { value: k, selected: u.mark === k ? "selected" : null }, D.MARKS[k].name));
+    card.append(el("div", { class: "u-head" }, [
+      title,
+      markSel,
+      el("button", { class: "icon danger", title: "Remove unit", onclick: () => { if (confirm("Remove " + (u.name || "unit") + "?")) { state.units = state.units.filter((x) => x !== u); save(); render(); } } }, "✕"),
+    ]));
+
+    // stat line
+    const statsRow = el("div", { class: "stats" });
+    for (const k of D.STATS) statsRow.append(statCell(k, eff[k], base[k]));
+    statsRow.append(statCell("Sv", eff.Sv ? eff.Sv + "+" : "–", base.Sv ? base.Sv + "+" : ""));
+    statsRow.append(statCell("Wd", eff.Ward ? eff.Ward + "+" : "–", base.Ward ? base.Ward + "+" : ""));
+    card.append(statsRow);
+
+    // casualties / wounds tracker
+    const track = el("div", { class: "track" });
+    const isSingle = u.isChar || u.models <= 1;
+    const multiWound = num(base.W) > 1;
+    if (!isSingle) {
+      track.append(stepper("Models", modelsRemaining(u), u.models,
+        () => { if (u.modelsLost < u.models) { u.modelsLost++; save(); render(); } },
+        () => { if (u.modelsLost > 0) { u.modelsLost--; save(); render(); } }));
+      const rb = el("div", { class: "rankbox" }, [
+        el("span", { class: "muted" }, "Ranks " + ri.ranks),
+        el("span", { class: "chip" + (ri.rankBonus ? " on" : "") }, "Rank bonus +" + ri.rankBonus),
+      ]);
+      track.append(rb);
+    }
+    if (isSingle || multiWound) {
+      const wmax = num(base.W) || 1;
+      const wrem = Math.max(0, wmax - (u.woundsLost || 0));
+      track.append(stepper("Wounds", wrem, wmax,
+        () => { if ((u.woundsLost || 0) < wmax) { u.woundsLost = (u.woundsLost || 0) + 1; save(); render(); } },
+        () => { if ((u.woundsLost || 0) > 0) { u.woundsLost--; save(); render(); } }));
+    }
+    card.append(track);
+
+    // rules / tags: mount, static special rules, then live mark/reward/effect rules
+    const hasTags = rules.length || (u.baseRules || []).length || u.mount;
+    if (hasTags) {
+      const tags = el("div", { class: "tags" });
+      if (u.mount) tags.append(el("span", { class: "tag t-mount" }, "🐎 " + u.mount));
+      for (const r of (u.baseRules || [])) tags.append(el("span", { class: "tag t-rule" }, r));
+      for (const r of rules) tags.append(el("span", { class: "tag t-" + r.src }, r.text));
+      card.append(tags);
+    }
+
+    // active rewards & effects (with remove)
+    const chips = el("div", { class: "active" });
+    for (const rid of u.rewards || []) {
+      const r = findReward(rid);
+      if (!r) continue;
+      chips.append(el("span", { class: "achip gaze" + (r.bad ? " bad" : "") }, [
+        "👁 " + r.name,
+        el("button", { class: "x", onclick: () => { u.rewards = u.rewards.filter((x) => x !== rid); save(); render(); } }, "×"),
+      ]));
+    }
+    for (const ef of u.effects || []) {
+      chips.append(el("span", { class: "achip " + (ef.kind === "hex" ? "hex" : "aug") }, [
+        (ef.kind === "hex" ? "▼ " : "▲ ") + ef.name + (ef.duration ? " · " + shortDur(ef.duration) : ""),
+        el("button", { class: "x", onclick: () => { u.effects = u.effects.filter((x) => x !== ef); save(); render(); } }, "×"),
+      ]));
+    }
+    if (chips.children.length) card.append(chips);
+
+    // action buttons
+    card.append(el("div", { class: "u-actions" }, [
+      el("button", { class: "act gaze", onclick: () => gazeModal(u) }, "👁 Gaze"),
+      el("button", { class: "act spell", onclick: () => effectModal(u) }, "✦ Spell"),
+      el("button", { class: "act", onclick: () => editModal(u) }, "✎ Edit"),
+    ]));
+    if (u.options && u.options.length) {
+      card.append(el("details", { class: "opts" }, [
+        el("summary", {}, "Equipment & options"),
+        el("div", { class: "muted small" }, u.options.join(" · ")),
+      ]));
+    }
+    return card;
+  }
+
+  function shortDur(d) {
+    if (/next turn/i.test(d)) return "your turn";
+    if (/end of turn/i.test(d)) return "turn";
+    if (/remains/i.test(d)) return "RIP";
+    if (/permanent/i.test(d)) return "battle";
+    return d;
+  }
+
+  function stepper(label, val, max, inc, dec) {
+    return el("div", { class: "stepper" }, [
+      el("div", { class: "step-l" }, label),
+      el("div", { class: "step-c" }, [
+        el("button", { class: "round minus", onclick: dec }, "−"),
+        el("div", { class: "step-v" }, [el("b", {}, String(val)), el("span", { class: "muted" }, "/" + max)]),
+        el("button", { class: "round plus", onclick: inc }, "+"),
+      ]),
+    ]);
+  }
+
+  // ---- modals --------------------------------------------------------------
+  function openModal(titleText, bodyNode, footNode) {
+    closeModal();
+    const back = el("div", { class: "modal-back", onclick: (e) => { if (e.target === back) closeModal(); } }, [
+      el("div", { class: "modal" }, [
+        el("div", { class: "modal-h" }, [el("h3", {}, titleText), el("button", { class: "icon", onclick: closeModal }, "✕")]),
+        el("div", { class: "modal-b" }, bodyNode),
+        footNode ? el("div", { class: "modal-f" }, footNode) : null,
+      ]),
+    ]);
+    document.body.append(back);
+    return back;
+  }
+  function closeModal() { const m = $(".modal-back"); if (m) m.remove(); }
+
+  function gazeModal(u) {
+    const body = el("div", {});
+    const last = el("div", { class: "rollout" });
+    body.append(el("p", { class: "muted small", html: "Apply a Gaze of the Gods reward. Results below are <b>editable defaults</b> — open <b>Edit table</b> to match your Arcane Journal. Rewards stack and last the battle." }));
+    body.append(el("div", { class: "rollrow" }, [
+      el("button", { class: "big roll", onclick: () => {
+        const roll = (1 + Math.floor(Math.random() * 6)) + (1 + Math.floor(Math.random() * 6));
+        const r = state.gaze.find((x) => String(x.roll) === String(roll)) || state.gaze[Math.min(state.gaze.length - 1, roll - 2)];
+        last.innerHTML = "";
+        last.append(el("div", { class: "rolled" }, [el("b", {}, "2D6 = " + roll + " → "), r ? r.name : "—"]));
+        if (r) { u.rewards = u.rewards || []; u.rewards.push(r.id); save(); render(); }
+      } }, "🎲 Roll 2D6"),
+      last,
+    ]));
+    const list = el("div", { class: "picklist" });
+    for (const r of state.gaze) {
+      list.append(el("button", { class: "pick" + (r.bad ? " bad" : ""), onclick: () => { u.rewards = u.rewards || []; u.rewards.push(r.id); save(); render(); closeModal(); } }, [
+        el("b", {}, r.roll + "  " + r.name),
+        el("span", { class: "muted small" }, describeMods(r)),
+      ]));
+    }
+    body.append(list);
+    const foot = [
+      el("button", { class: "ghost", onclick: () => editGazeTable() }, "Edit table"),
+      el("button", { onclick: closeModal }, "Done"),
+    ];
+    openModal("Gaze of the Gods — " + (u.name || "unit"), body, foot);
+  }
+
+  function describeMods(r) {
+    const parts = [];
+    for (const k in (r.mods || {})) {
+      if (k === "Ward") parts.push(r.mods[k] + "+ ward");
+      else if (k === "Sv") parts.push(r.mods[k] + "+ save");
+      else parts.push((r.mods[k] > 0 ? "+" : "") + r.mods[k] + " " + k);
+    }
+    for (const rl of (r.rules || [])) parts.push(rl);
+    return parts.join(", ");
+  }
+
+  function effectModal(u) {
+    const body = el("div", {});
+    const durSel = el("select", { class: "dur" });
+    for (const d of D.DURATIONS) durSel.append(el("option", { value: d }, d));
+    body.append(el("div", { class: "durrow" }, [el("span", { class: "muted small" }, "Duration:"), durSel]));
+    function addEffect(src) {
+      const ef = clone(src);
+      ef.duration = durSel.value;
+      u.effects = u.effects || [];
+      u.effects.push(ef);
+      save(); render(); closeModal();
+    }
+    for (const group of ["augment", "hex"]) {
+      body.append(el("h4", { class: group === "augment" ? "augh" : "hexh" }, group === "augment" ? "▲ Augments (buffs)" : "▼ Hexes (debuffs)"));
+      const list = el("div", { class: "picklist" });
+      for (const s of D.SPELL_EFFECTS.filter((x) => x.kind === group)) {
+        list.append(el("button", { class: "pick " + group, onclick: () => addEffect(s) }, [
+          el("b", {}, s.name), el("span", { class: "muted small" }, describeMods(s)),
+        ]));
+      }
+      body.append(list);
+    }
+    // custom
+    body.append(el("h4", {}, "Custom effect"));
+    const cname = el("input", { placeholder: "Name e.g. 'Pit of Shades'" });
+    const cmods = el("input", { placeholder: "Mods e.g. S+1, T-1, A+2" });
+    body.append(el("div", { class: "customrow" }, [cname, cmods,
+      el("button", { onclick: () => {
+        if (!cname.value.trim()) return;
+        const mods = parseModString(cmods.value);
+        addEffect({ id: "custom", kind: "augment", name: cname.value.trim(), mods });
+      } }, "Add"),
+    ]));
+    openModal("Spells & effects — " + (u.name || "unit"), body, [el("button", { onclick: closeModal }, "Done")]);
+  }
+
+  // Parse "S+1, T-1, A+2, ward5" into a mods object.
+  function parseModString(s) {
+    const mods = {};
+    for (const tok of String(s).split(/[,;]+/)) {
+      const m = tok.trim().match(/^(M|WS|BS|S|T|W|I|A|Ld|Sv|Ward)\s*([+-]?\d+)$/i);
+      if (m) {
+        const key = m[1].length <= 2 ? m[1].toUpperCase() : m[1][0].toUpperCase() + m[1].slice(1).toLowerCase();
+        const norm = { M: "M", WS: "WS", BS: "BS", S: "S", T: "T", W: "W", I: "I", A: "A", LD: "Ld", SV: "Sv", WARD: "Ward" }[m[1].toUpperCase()];
+        mods[norm] = parseInt(m[2], 10);
+      }
+    }
+    return mods;
+  }
+
+  function editModal(u) {
+    const body = el("div", {});
+    body.append(el("p", { class: "muted small" }, "Base profile (the foundation everything else modifies). Verify against your book."));
+    const grid = el("div", { class: "editgrid" });
+    for (const k of D.STATS.concat(["Sv", "Ward"])) {
+      grid.append(el("label", {}, [k, el("input", { value: u.profile[k] == null ? "" : u.profile[k], inputmode: "numeric",
+        onchange: (e) => { u.profile[k] = e.target.value === "" ? (k === "Sv" || k === "Ward" ? null : "") : parseInt(e.target.value, 10); save(); render(); } })]));
+    }
+    body.append(grid);
+    const row2 = el("div", { class: "editmeta" }, [
+      el("label", {}, ["Category", selectFrom(["Characters", "Core", "Special", "Rare", "Allies"], u.category, (v) => { u.category = v; save(); render(); })]),
+      el("label", {}, ["Models", el("input", { value: u.models, inputmode: "numeric", onchange: (e) => { u.models = parseInt(e.target.value, 10) || 1; save(); render(); } })]),
+      el("label", {}, ["Unit width", el("input", { value: u.width, inputmode: "numeric", onchange: (e) => { u.width = parseInt(e.target.value, 10) || 1; save(); render(); } })]),
+      el("label", { class: "chk" }, [el("input", { type: "checkbox", checked: u.isChar ? "checked" : null, onchange: (e) => { u.isChar = e.target.checked; save(); render(); } }), "Single model / character"]),
+    ]);
+    body.append(row2);
+    body.append(el("label", { class: "full" }, ["Options / equipment", el("textarea", { rows: 3, onchange: (e) => { u.options = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean); save(); } }, u.options.join("\n"))]));
+    openModal("Edit — " + (u.name || "unit"), body, [el("button", { onclick: () => { closeModal(); render(); } }, "Done")]);
+  }
+
+  function selectFrom(opts, val, cb) {
+    const s = el("select", { onchange: (e) => cb(e.target.value) });
+    for (const o of opts) s.append(el("option", { value: o, selected: o === val ? "selected" : null }, o));
+    return s;
+  }
+
+  function editGazeTable() {
+    const body = el("div", {});
+    body.append(el("p", { class: "muted small" }, "Edit each result's name and mods (e.g. 'S+1, A+1, ward5'). These map your 2D6 rolls."));
+    const list = el("div", {});
+    for (const r of state.gaze) {
+      const row = el("div", { class: "gazeedit" }, [
+        el("input", { class: "roll", value: r.roll, onchange: (e) => { r.roll = e.target.value; save(); } }),
+        el("input", { class: "rname", value: r.name, onchange: (e) => { r.name = e.target.value; save(); } }),
+        el("input", { class: "rmods", value: modsToString(r), placeholder: "S+1, ward5", onchange: (e) => { r.mods = parseModString(e.target.value); r.rules = extractRules(e.target.value); save(); } }),
+      ]);
+      list.append(row);
+    }
+    body.append(list);
+    const foot = [
+      el("button", { class: "ghost danger", onclick: () => { if (confirm("Reset Gaze table to defaults?")) { state.gaze = clone(D.GAZE_REWARDS); save(); editGazeTable(); } } }, "Reset defaults"),
+      el("button", { onclick: closeModal }, "Done"),
+    ];
+    openModal("Edit Gaze of the Gods table", body, foot);
+  }
+  function modsToString(r) {
+    const parts = [];
+    for (const k in (r.mods || {})) parts.push(k + (r.mods[k] > 0 ? "+" : "") + r.mods[k]);
+    return parts.join(", ");
+  }
+  function extractRules(s) {
+    // keep any comma-separated token that isn't a recognised mod as a rule
+    const rules = [];
+    for (const tok of String(s).split(/[,;]+/)) {
+      const t = tok.trim();
+      if (t && !/^(M|WS|BS|S|T|W|I|A|Ld|Sv|Ward)\s*[+-]?\d+$/i.test(t)) rules.push(t);
+    }
+    return rules;
+  }
+
+  function importModal() {
+    const body = el("div", {});
+    body.append(el("p", { class: "muted small", html: "Import your army from Old World Builder. Best results: <b>Export → as JSON</b> and choose the <code>.owb.json</code> file below. You can also paste the JSON or a plain-text list." }));
+
+    const preview = el("div", { class: "preview muted small" });
+    function showPreview(input) {
+      const r = P.parse(input);
+      const matched = r.units.filter((u) => u.matched).length;
+      preview.innerHTML = r.units.length
+        ? `Found <b>${r.units.length}</b> units · <b>${matched}</b> matched to stat lines${r.meta && r.meta.name ? ` · <b>${r.meta.name}</b>` : ""}`
+        : "Nothing recognised yet.";
+      return r;
+    }
+
+    const file = el("input", { type: "file", accept: ".json,.owb.json,application/json,text/plain" });
+    file.addEventListener("change", () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => { ta.value = String(reader.result || ""); showPreview(ta.value); };
+      reader.readAsText(f);
+    });
+    body.append(el("label", { class: "filerow" }, ["Choose .owb.json file", file]));
+
+    const ta = el("textarea", { class: "import", rows: 10, placeholder: 'Paste your OWB JSON here, e.g. {"name":"My List","army":"warriors-of-chaos","characters":[...],"core":[...]}\n\n…or a plain-text list.' });
+    ta.addEventListener("input", () => showPreview(ta.value));
+    body.append(ta);
+    body.append(preview);
+    const foot = [
+      el("label", { class: "chk" }, [el("input", { type: "checkbox", id: "imp-replace", checked: "checked" }), "Replace current army"]),
+      el("button", { class: "primary", onclick: () => {
+        const r = P.parse(ta.value);
+        if (!r.units.length) { alert("Couldn't find any units in that text."); return; }
+        if ($("#imp-replace").checked) state.units = r.units; else state.units = state.units.concat(r.units);
+        if (r.meta.name) state.meta = r.meta;
+        save(); render(); closeModal();
+      } }, "Import"),
+    ];
+    openModal("Import army list", body, foot);
+  }
+
+  // ---- top bar actions -----------------------------------------------------
+  function addUnit() {
+    const u = P.newUnit();
+    u.name = "New unit";
+    state.units.push(u);
+    save(); render();
+    editModal(u);
+  }
+  function clearTurnEffects() {
+    let n = 0;
+    for (const u of state.units) {
+      const before = (u.effects || []).length;
+      u.effects = (u.effects || []).filter((e) => !/next turn|end of turn/i.test(e.duration || ""));
+      n += before - u.effects.length;
+    }
+    save(); render();
+    flash(n ? `Cleared ${n} short-lived effect(s).` : "No short-lived effects to clear.");
+  }
+  function flash(msg) {
+    const t = el("div", { class: "toast" }, msg);
+    document.body.append(t);
+    setTimeout(() => t.classList.add("show"), 10);
+    setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 1800);
+  }
+
+  // ---- wire up -------------------------------------------------------------
+  function init() {
+    $("#btnImport").addEventListener("click", importModal);
+    $("#btnAdd").addEventListener("click", addUnit);
+    $("#btnEndTurn").addEventListener("click", clearTurnEffects);
+    $("#btnReset").addEventListener("click", () => {
+      if (confirm("Clear the whole army? This can't be undone.")) {
+        state = { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS) };
+        save(); render();
+      }
+    });
+    $("#armyName").addEventListener("change", (e) => { state.meta.name = e.target.value; save(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+    render();
+
+    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+      navigator.serviceWorker.register("service-worker.js").catch(() => {});
+    }
+  }
+  document.addEventListener("DOMContentLoaded", init);
+})();
