@@ -148,6 +148,16 @@
     statsRow.append(statCell("Wd", eff.Ward ? eff.Ward + "+" : "–", base.Ward ? base.Ward + "+" : ""));
     card.append(statsRow);
 
+    // mount secondary stat line
+    if (u.mountProfile) {
+      const mp = u.mountProfile;
+      const mRow = el("div", { class: "stats mount" });
+      mRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "🐎"), el("div", { class: "stat-v mlbl" }, "Mt")]));
+      for (const k of D.STATS) mRow.append(statCell(k, mp[k] === "" || mp[k] == null ? "–" : mp[k], ""));
+      mRow.append(el("div", { class: "stat ghostcell" })); // pad to align with Sv/Wd
+      card.append(mRow);
+    }
+
     // casualties / wounds tracker
     const track = el("div", { class: "track" });
     const isSingle = u.isChar || u.models <= 1;
@@ -168,6 +178,13 @@
       track.append(stepper("Wounds", wrem, wmax,
         () => { if ((u.woundsLost || 0) < wmax) { u.woundsLost = (u.woundsLost || 0) + 1; save(); render(); } },
         () => { if ((u.woundsLost || 0) > 0) { u.woundsLost--; save(); render(); } }));
+    }
+    if (u.mountProfile && num(u.mountProfile.W) > 1) {
+      const mw = num(u.mountProfile.W);
+      const mrem = Math.max(0, mw - (u.mountWoundsLost || 0));
+      track.append(stepper("🐎 Wnds", mrem, mw,
+        () => { if ((u.mountWoundsLost || 0) < mw) { u.mountWoundsLost = (u.mountWoundsLost || 0) + 1; save(); render(); } },
+        () => { if ((u.mountWoundsLost || 0) > 0) { u.mountWoundsLost--; save(); render(); } }));
     }
     card.append(track);
 
@@ -354,8 +371,29 @@
       el("label", { class: "chk" }, [el("input", { type: "checkbox", checked: u.isChar ? "checked" : null, onchange: (e) => { u.isChar = e.target.checked; save(); render(); } }), "Single model / character"]),
     ]);
     body.append(row2);
+
+    // Mount profile editing
+    body.append(el("h4", {}, "Mount"));
+    const mountRow = el("div", { class: "editmeta" }, [
+      el("label", {}, ["Mount name", el("input", { value: u.mount || "", placeholder: "e.g. Chaos Dragon",
+        onchange: (e) => { u.mount = e.target.value.trim() || null; if (u.mount && !u.mountProfile) u.mountProfile = blankProfile(); if (!u.mount) u.mountProfile = null; save(); editModalRefresh(u); } })]),
+    ]);
+    body.append(mountRow);
+    if (u.mountProfile) {
+      const mgrid = el("div", { class: "editgrid" });
+      for (const k of D.STATS) {
+        mgrid.append(el("label", {}, [k, el("input", { value: u.mountProfile[k] == null ? "" : u.mountProfile[k], inputmode: "numeric",
+          onchange: (e) => { u.mountProfile[k] = e.target.value === "" ? "" : parseInt(e.target.value, 10); save(); render(); } })]));
+      }
+      body.append(mgrid);
+    }
+
     body.append(el("label", { class: "full" }, ["Options / equipment", el("textarea", { rows: 3, onchange: (e) => { u.options = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean); save(); } }, u.options.join("\n"))]));
     openModal("Edit — " + (u.name || "unit"), body, [el("button", { onclick: () => { closeModal(); render(); } }, "Done")]);
+  }
+
+  function blankProfile() { return { M: "", WS: "", BS: "", S: "", T: "", W: "", I: "", A: "", Ld: "", Sv: null, Ward: null }; }
+  function editModalRefresh(u) { render(); editModal(u); // reopen to reflect mount add/remove
   }
 
   function selectFrom(opts, val, cb) {

@@ -61,6 +61,20 @@
     UNIT_INDEX[norm(u.name).replace(/s$/, "")] = u;
   }
 
+  // --- Mounts (editable defaults) --------------------------------------------
+  // A mounted character is one model, but rider and mount have separate profiles
+  // and the mount adds its own Attacks and wounds. Tracked as a secondary line.
+  const MOUNTS = [
+    { name: "Chaos Steed", profile: p(8, 3, 0, 4, 4, 1, 3, 1, 5), note: "Barded" },
+    { name: "Daemonic Mount", profile: p(8, 4, 0, 4, 4, 1, 4, 2, 7) },
+    { name: "Chaos Dragon", profile: p(6, 6, 0, 6, 6, 6, 3, 4, 8), note: "Fly, Terror, Large Target, Breath Weapon" },
+    { name: "Manticore", profile: p(6, 5, 0, 5, 5, 4, 5, 4, 5), note: "Fly, Terror, Large Target" },
+    { name: "Chaos Chariot", profile: p(8, 0, 0, 5, 5, 4, 0, 0, 0), note: "Chariot — crew & steeds attack separately" },
+    { name: "Gorebeast Chariot", profile: p(7, 0, 0, 5, 6, 5, 0, 0, 0), note: "Chariot" },
+  ];
+  const MOUNT_INDEX = {};
+  for (const m of MOUNTS) { MOUNT_INDEX[norm(m.name)] = m; MOUNT_INDEX[norm(m.name).replace(/s$/, "")] = m; }
+
   // --- Marks of Chaos ---------------------------------------------------------
   // mods are numeric profile adjustments; rules are descriptive tags.
   const MARKS = {
@@ -129,6 +143,6 @@
   ];
 
   window.WOC_DATA = {
-    STATS, UNITS, UNIT_INDEX, MARKS, GAZE_REWARDS, SPELL_EFFECTS, DURATIONS, norm,
+    STATS, UNITS, UNIT_INDEX, MOUNTS, MOUNT_INDEX, MARKS, GAZE_REWARDS, SPELL_EFFECTS, DURATIONS, norm,
   };
 })();

@@ -27,6 +27,8 @@
       woundsLost: 0,
       mark: null,
       mount: null,
+      mountProfile: null,   // secondary stat line when mounted (editable)
+      mountWoundsLost: 0,
       options: [],        // equipment / command / wargear strings
       baseRules: [],      // static special rules from the list
       rewards: [],        // Gaze of the Gods
@@ -112,7 +114,11 @@
 
     // Mount (rider keeps own profile; mount shown as a tag/note for now).
     const mount = (entry.mounts || []).find((m) => m && m.active && !/^on foot$/i.test(m.name_en || ""));
-    if (mount) u.mount = cleanName(mount.name_en);
+    if (mount) {
+      u.mount = cleanName(mount.name_en);
+      const mdef = D.MOUNT_INDEX[D.norm(u.mount)] || D.MOUNT_INDEX[D.norm(u.mount).replace(/s$/, "")];
+      if (mdef) { u.mountProfile = Object.assign({}, mdef.profile); if (mdef.note) u.mountNote = mdef.note; }
+    }
 
     // Wargear: active equipment, armour, simple options (e.g. Shields), wizard level.
     const wargear = [];
