@@ -6,8 +6,9 @@ Paste/import your Old World Builder army and, in real time, keep on top of the t
 - **Live stat lines** — every unit's effective profile recomputes instantly from its
   base stats + Mark of Chaos + Gaze of the Gods rewards + active spells + casualties.
   Changed characteristics are highlighted with the original value shown underneath.
-- **Gaze of the Gods** ("Eye of the Gods") — roll 2D6 or pick a result; rewards stack
-  for the rest of the battle. The whole table is **editable** to match your Arcane Journal.
+- **Gaze of the Gods** — roll a D6 (in your Command sub-phase) or pick a result; lasting
+  rewards stack for the battle and temporary ones clear at end of turn. The whole table is
+  **editable** to match your Arcane Journal.
 - **Spells & effects** — apply augments (buffs) and hexes (debuffs) from a library or add
   custom ones, each with a duration. One tap on **End of turn** clears the short-lived ones.
 - **Wounds & casualties** — steppers for models remaining (with live rank bonus) and for

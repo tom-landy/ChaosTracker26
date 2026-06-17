@@ -9,10 +9,16 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
+  const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
 
   // ---- state ---------------------------------------------------------------
-  let state = load() || { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS) };
-  if (!state.gaze) state.gaze = clone(D.GAZE_REWARDS);
+  let state = load() || { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION };
+  // Migrate older saves to the corrected Gaze of the Gods table, persisting once.
+  if (!state.gaze || state.gazeVersion !== GAZE_VERSION) {
+    state.gaze = clone(D.GAZE_REWARDS);
+    state.gazeVersion = GAZE_VERSION;
+    save();
+  }
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
@@ -48,6 +54,10 @@
     }
     for (const ef of unit.effects || []) {
       applyMods(ef.mods, ef.rules, ef.kind === "hex" ? "hex" : "aug");
+    }
+    // Characteristics cap at 10 (and never go negative).
+    for (const k of ["WS", "BS", "S", "T", "W", "I", "A", "Ld"]) {
+      if (eff[k] !== "" && eff[k] != null) eff[k] = Math.max(0, Math.min(10, eff[k]));
     }
     return { eff, base, rules, sources };
   }
@@ -271,7 +281,7 @@
   }
   function closeModal() { const m = $(".modal-back"); if (m) m.remove(); }
 
-  // Match a rolled 2D6 number against a result's "roll" spec: "7", "3-4", "10+", "2".
+  // Match a rolled dice number against a result's "roll" spec: "5", "3-4", "6+", "2".
   function rollMatches(spec, roll) {
     const s = String(spec || "").trim().replace(/[–—]/g, "-");
     let m;
@@ -281,25 +291,38 @@
     return false;
   }
 
+  // Apply a Gaze result. Temporary results go to the effects list so "End of turn"
+  // clears them; lasting results are stored as battle-long rewards.
+  function applyReward(u, r) {
+    if (r.temp) {
+      u.effects = u.effects || [];
+      u.effects.push({ id: "gaze-" + r.id, kind: "augment", name: r.name, mods: Object.assign({}, r.mods || {}), rules: (r.rules || []).slice(), duration: "Until start of your next turn" });
+    } else {
+      u.rewards = u.rewards || [];
+      u.rewards.push(r.id);
+    }
+    save(); render();
+  }
+
   function gazeModal(u) {
     const body = el("div", {});
     const last = el("div", { class: "rollout" });
-    body.append(el("p", { class: "muted small", html: "Roll in your <b>Command sub-phase</b> (the result affects the character, not their mount). Rewards stack and last the battle. Values are <b>editable</b> — open <b>Edit table</b> to set yours." }));
+    body.append(el("p", { class: "muted small", html: "Roll a <b>D6</b> in your <b>Command sub-phase</b> — the result affects the character, not their mount. Results 2 &amp; 3 last until your next turn (cleared by <b>End of turn</b>); the rest last the battle. Values are <b>editable</b> via <b>Edit table</b>." }));
     body.append(el("div", { class: "rollrow" }, [
       el("button", { class: "big roll", onclick: () => {
-        const roll = (1 + Math.floor(Math.random() * 6)) + (1 + Math.floor(Math.random() * 6));
-        const r = state.gaze.find((x) => rollMatches(x.roll, roll)) || state.gaze.find((x) => String(x.roll) === String(roll)) || state.gaze[Math.min(state.gaze.length - 1, roll - 2)];
+        const roll = 1 + Math.floor(Math.random() * 6);
+        const r = state.gaze.find((x) => rollMatches(x.roll, roll)) || state.gaze[Math.min(state.gaze.length - 1, roll - 1)];
         last.innerHTML = "";
-        last.append(el("div", { class: "rolled" }, [el("b", {}, "2D6 = " + roll + " → "), r ? r.name : "—"]));
-        if (r) { u.rewards = u.rewards || []; u.rewards.push(r.id); save(); render(); }
-      } }, "🎲 Roll 2D6"),
+        last.append(el("div", { class: "rolled" }, [el("b", {}, "D6 = " + roll + " → "), r ? r.name : "—"]));
+        if (r) applyReward(u, r);
+      } }, "🎲 Roll D6"),
       last,
     ]));
     const list = el("div", { class: "picklist" });
     for (const r of state.gaze) {
-      list.append(el("button", { class: "pick" + (r.bad ? " bad" : ""), onclick: () => { u.rewards = u.rewards || []; u.rewards.push(r.id); save(); render(); closeModal(); } }, [
-        el("b", {}, r.roll + "  " + r.name),
-        el("span", { class: "muted small" }, describeMods(r)),
+      list.append(el("button", { class: "pick" + (r.bad ? " bad" : ""), onclick: () => { applyReward(u, r); closeModal(); } }, [
+        el("b", {}, r.roll + "  " + r.name + (r.temp ? " ⏳" : "")),
+        el("span", { class: "muted small" }, describeMods(r) + (r.temp ? " · this turn" : "")),
       ]));
     }
     body.append(list);
@@ -420,7 +443,7 @@
 
   function editGazeTable() {
     const body = el("div", {});
-    body.append(el("p", { class: "muted small" }, "Edit each result's name and mods (e.g. 'S+1, A+1, ward5'). These map your 2D6 rolls."));
+    body.append(el("p", { class: "muted small" }, "Edit each result's name and mods (e.g. 'S+1, A+1, ward5'). The roll column accepts numbers or ranges (e.g. 3-4, 6+)."));
     const list = el("div", {});
     for (const r of state.gaze) {
       const row = el("div", { class: "gazeedit" }, [
@@ -525,7 +548,7 @@
     $("#btnEndTurn").addEventListener("click", clearTurnEffects);
     $("#btnReset").addEventListener("click", () => {
       if (confirm("Clear the whole army? This can't be undone.")) {
-        state = { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS) };
+        state = { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION };
         save(); render();
       }
     });

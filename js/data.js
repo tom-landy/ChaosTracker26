@@ -85,21 +85,18 @@
     undivided: { name: "Mark of Undivided", mods: {}, rules: ["May re-roll on the Gaze of the Gods table"] },
   };
 
-  // --- Gaze of the Gods table (a.k.a. "Eye of the Gods") ----------------------
-  // DEFAULT MAPPING ONLY. Edit results in-app to match your Arcane Journal.
-  // Each reward applies stacking profile mods and/or descriptive rules.
+  // --- Gaze of the Gods table -------------------------------------------------
+  // Rolled on a D6 in the Command sub-phase; the result affects the character,
+  // not their mount. "temp" results last only until your next turn (cleared by
+  // End of turn); the rest last the remainder of the battle. Characteristics cap
+  // at 10. Values are editable in-app.
   const GAZE_REWARDS = [
-    { id: "spawn", roll: "2", name: "The Price of Failure", mods: {}, rules: ["Model becomes a Chaos Spawn"], bad: true },
-    { id: "tough", roll: "3", name: "Iron-hard Hide", mods: { T: 1 }, rules: [] },
-    { id: "str", roll: "4", name: "Strength of the Gods", mods: { S: 1 }, rules: [] },
-    { id: "ws", roll: "5", name: "Favoured Eye", mods: { WS: 1 }, rules: [] },
-    { id: "att", roll: "6", name: "Murderous Frenzy", mods: { A: 1 }, rules: [] },
-    { id: "ward", roll: "7", name: "Shield of the Gods", mods: { Ward: 5 }, rules: ["5+ Ward save"] },
-    { id: "regen", roll: "8", name: "Mutated Flesh", mods: {}, rules: ["Regeneration (6+)"] },
-    { id: "init", roll: "9", name: "Quickened", mods: { I: 1 }, rules: [] },
-    { id: "wound", roll: "10", name: "Unholy Vigour", mods: { W: 1 }, rules: [] },
-    { id: "twoatt", roll: "11", name: "Blessed by Chaos", mods: { A: 1, S: 1 }, rules: [] },
-    { id: "daemon", roll: "12", name: "Apotheosis", mods: { WS: 1, S: 1, T: 1, A: 1, Ward: 5 }, rules: ["Daemonhood — 5+ Ward, Terror"] },
+    { id: "damned", roll: "1", name: "Damned by Chaos", mods: {}, rules: ["Subject to Stupidity for the rest of the game (if already Stupid, -1 Ld instead, min 2)"], bad: true },
+    { id: "quick", roll: "2", name: "Unnatural Quickness", mods: { I: 1 }, temp: true, rules: [] },
+    { id: "ironskin", roll: "3", name: "Iron Skin", mods: { T: 1 }, temp: true, rules: [] },
+    { id: "mutation", roll: "4", name: "Murderous Mutation", mods: { WS: 1 }, rules: [] },
+    { id: "fury", roll: "5", name: "Dark Fury", mods: { A: 1 }, rules: [] },
+    { id: "apotheosis", roll: "6", name: "Apotheosis", mods: { S: 1, Ld: 1 }, rules: [] },
   ];
 
   // --- Spell / effect library -------------------------------------------------
