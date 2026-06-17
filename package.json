@@ -1,0 +1,12 @@
+{
+  "name": "chaostracker26",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Battle tracker for Warriors of Chaos in Warhammer: The Old World.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
