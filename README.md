@@ -34,7 +34,25 @@ It's a static site — no build step, no server needed.
 - **Install on your phone (recommended):** host it on **GitHub Pages** and open the URL on
   your phone, then *Add to Home Screen*.
 
-### Deploy to GitHub Pages
+### Deploy to Render (recommended for phone use)
+
+This repo includes a `render.yaml` Blueprint, so deploying is one flow:
+
+1. Push this repo to GitHub (any branch Render can see — the feature branch is fine;
+   you don't need to merge to `main`).
+2. In the [Render dashboard](https://dashboard.render.com): **New ▸ Blueprint**, connect
+   this repository, and pick the branch. Render reads `render.yaml` and creates a free
+   **Static Site** (no build step, automatic HTTPS).
+3. Click **Apply**. After it builds you'll get a URL like
+   `https://chaostracker26.onrender.com`.
+4. Open that URL on your phone → browser menu → **Add to Home Screen**. Because it's served
+   over HTTPS, the app installs and works offline.
+
+Prefer not to use a Blueprint? Create the service by hand: **New ▸ Static Site**, connect the
+repo, set **Build Command** to empty (or `echo ok`) and **Publish Directory** to `.` (the repo
+root). Every push to the chosen branch then auto-deploys.
+
+### Deploy to GitHub Pages (alternative)
 
 This repo includes a workflow at `.github/workflows/deploy-pages.yml`. In your repo settings
 go to **Settings → Pages → Build and deployment → Source: GitHub Actions**. Pushing to the

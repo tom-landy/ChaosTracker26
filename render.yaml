@@ -1,0 +1,15 @@
+# Render Blueprint — deploys ChaosTracker26 as a static site.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: chaostracker26
+    runtime: static
+    # No build step — the app is plain HTML/CSS/JS served as-is.
+    buildCommand: "echo 'static site — nothing to build'"
+    staticPublishPath: .
+    pullRequestPreviewsEnabled: true
+    headers:
+      # The service worker must not be cached, so updates roll out immediately.
+      - path: /service-worker.js
+        name: Cache-Control
+        value: "no-cache, no-store, must-revalidate"
