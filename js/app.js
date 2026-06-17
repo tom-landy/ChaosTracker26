@@ -111,13 +111,19 @@
   }
 
   function statCell(label, val, base, lowerBetter) {
-    const changed = val !== "" && base !== "" && num(val) !== num(base);
-    const cls = "stat" + (changed ? " changed" : "");
-    return el("div", { class: cls }, [
+    const changed = val !== "" && base !== "" && val != null && base != null && num(val) !== num(base);
+    let dir = "", arrow = "";
+    if (changed) {
+      const better = lowerBetter ? num(val) < num(base) : num(val) > num(base);
+      dir = better ? " up" : " down";
+      arrow = better ? "▲" : "▼";
+    }
+    return el("div", { class: "stat" + (changed ? " changed" + dir : "") }, [
       el("div", { class: "stat-l" }, label),
       el("div", { class: "stat-v" }, [
         String(val === "" || val == null ? "–" : val),
-        changed ? el("span", { class: "stat-b" }, "(" + (base === "" ? "–" : base) + ")") : null,
+        changed ? el("span", { class: "arr" }, arrow) : null,
+        changed ? el("span", { class: "stat-b" }, "was " + (base === "" ? "–" : base)) : null,
       ]),
     ]);
   }
@@ -125,7 +131,7 @@
   function unitCard(u) {
     const { eff, base, rules } = effective(u);
     const ri = rankInfo(u);
-    const card = el("div", { class: "card" + (modelsRemaining(u) <= 0 ? " dead" : "") });
+    const card = el("div", { class: "card mark-" + (u.mark || "none") + (modelsRemaining(u) <= 0 ? " dead" : "") });
 
     // header
     const title = el("input", {
@@ -144,8 +150,8 @@
     // stat line
     const statsRow = el("div", { class: "stats" });
     for (const k of D.STATS) statsRow.append(statCell(k, eff[k], base[k]));
-    statsRow.append(statCell("Sv", eff.Sv ? eff.Sv + "+" : "–", base.Sv ? base.Sv + "+" : ""));
-    statsRow.append(statCell("Wd", eff.Ward ? eff.Ward + "+" : "–", base.Ward ? base.Ward + "+" : ""));
+    statsRow.append(statCell("Sv", eff.Sv ? eff.Sv + "+" : "–", base.Sv ? base.Sv + "+" : "", true));
+    statsRow.append(statCell("Wd", eff.Ward ? eff.Ward + "+" : "–", base.Ward ? base.Ward + "+" : "", true));
     card.append(statsRow);
 
     // mount secondary stat line
@@ -265,14 +271,24 @@
   }
   function closeModal() { const m = $(".modal-back"); if (m) m.remove(); }
 
+  // Match a rolled 2D6 number against a result's "roll" spec: "7", "3-4", "10+", "2".
+  function rollMatches(spec, roll) {
+    const s = String(spec || "").trim().replace(/[–—]/g, "-");
+    let m;
+    if ((m = s.match(/^(\d+)\s*\+$/))) return roll >= +m[1];
+    if ((m = s.match(/^(\d+)\s*-\s*(\d+)$/))) return roll >= +m[1] && roll <= +m[2];
+    if ((m = s.match(/^(\d+)$/))) return roll === +m[1];
+    return false;
+  }
+
   function gazeModal(u) {
     const body = el("div", {});
     const last = el("div", { class: "rollout" });
-    body.append(el("p", { class: "muted small", html: "Apply a Gaze of the Gods reward. Results below are <b>editable defaults</b> — open <b>Edit table</b> to match your Arcane Journal. Rewards stack and last the battle." }));
+    body.append(el("p", { class: "muted small", html: "Roll in your <b>Command sub-phase</b> (the result affects the character, not their mount). Rewards stack and last the battle. Values are <b>editable</b> — open <b>Edit table</b> to set yours." }));
     body.append(el("div", { class: "rollrow" }, [
       el("button", { class: "big roll", onclick: () => {
         const roll = (1 + Math.floor(Math.random() * 6)) + (1 + Math.floor(Math.random() * 6));
-        const r = state.gaze.find((x) => String(x.roll) === String(roll)) || state.gaze[Math.min(state.gaze.length - 1, roll - 2)];
+        const r = state.gaze.find((x) => rollMatches(x.roll, roll)) || state.gaze.find((x) => String(x.roll) === String(roll)) || state.gaze[Math.min(state.gaze.length - 1, roll - 2)];
         last.innerHTML = "";
         last.append(el("div", { class: "rolled" }, [el("b", {}, "2D6 = " + roll + " → "), r ? r.name : "—"]));
         if (r) { u.rewards = u.rewards || []; u.rewards.push(r.id); save(); render(); }
