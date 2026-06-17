@@ -207,6 +207,11 @@ button.round.plus  { background: linear-gradient(180deg, #1c3f2a, #133021); bord
 .achip.gaze.bad { border-color: var(--danger); color: var(--danger); background: rgba(224,85,80,0.1); }
 .achip.aug { border-color: #2c6044; color: var(--aug); background: rgba(91,191,123,0.1); }
 .achip.hex { border-color: #6a2f20; color: var(--hex); background: rgba(214,90,66,0.1); }
+.achip.info { border-color: var(--brass-d); color: var(--brass); background: rgba(205,162,63,0.08); }
+.pick.spell { border-left: 3px solid var(--brass); }
+.pick.spell.augment { border-left-color: var(--aug); }
+.pick.spell.hex { border-left-color: var(--hex); }
+.spellmeta { font-size: 11px; color: var(--brass); opacity: 0.85; }
 .achip .x { background: transparent; border: none; color: inherit; font-size: 17px; padding: 0 2px; line-height: 1; box-shadow: none; }
 
 /* unit actions */

@@ -132,6 +132,43 @@
     { id: "hex-nomarch", kind: "hex", name: "Cannot March", mods: {}, rules: ["Cannot March"] },
   ];
 
+  // --- Lores of Magic ---------------------------------------------------------
+  // Spells encoded as mechanical effects (stat mods + a short rule summary), not
+  // flavour text. kind drives colour/handling: augment (friendly buff), hex
+  // (enemy debuff), damage (a hit/utility — "instant" ones just show a reminder).
+  const LORE_NAMES = {
+    "battle-magic": "Battle Magic",
+    "daemonology": "Daemonology",
+    "dark-magic": "Dark Magic",
+    "shadowlands": "Shadowlands",
+    "elementalism": "Elementalism",
+    "illusion": "Illusion",
+    "necromancy": "Necromancy",
+    "high-magic": "High Magic",
+  };
+  const LORES = {
+    daemonology: [
+      { id: "dae-sig", name: "The Summoning", type: "Magic Missile", cv: "9+", range: '18"', kind: "damage", instant: true,
+        mods: {}, rules: ["Target enemy takes 2D6 hits at S4, AP -1"] },
+      { id: "dae-1", name: "Steed of Shadows", type: "Conveyance", cv: "8+", range: '15"', kind: "augment",
+        mods: {}, rules: ["Friendly infantry gains Fly (12)"], duration: "Until start of your next turn" },
+      { id: "dae-2", name: "Gathering Darkness", type: "Hex", cv: "9+", range: '12"', kind: "hex",
+        mods: { I: -2, Ld: -2 }, rules: ["Target can't use General's Inspiring Presence (I min 1, Ld min 2)"], duration: "Until start of your next turn" },
+      { id: "dae-3", name: "Daemonic Familiars", type: "Assailment", cv: "8+", range: "Combat", kind: "damage", instant: true,
+        mods: {}, rules: ["Enemy in combat takes 2D6 hits at S2, no armour save (Ward/Regen allowed)"] },
+      { id: "dae-4", name: "Daemonic Vessel", type: "Enchantment", cv: "9+", range: "Self", kind: "augment",
+        mods: { S: 1, A: 1 }, rules: ["+1 Armour Piercing on weapons (caster, mount & joined unit)"], duration: "Until end of turn" },
+      { id: "dae-5", name: "Vortex of Chaos", type: "Magical Vortex", cv: "8+", range: '15"', kind: "damage",
+        mods: {}, rules: ['Remains in play: 3" template is difficult terrain, scatters D6" each turn; units it crosses take D6+1 hits at S3'], duration: "Remains in play" },
+      { id: "dae-6", name: "Daemonic Vigour", type: "Enchantment", cv: "9+", range: '15"', kind: "augment",
+        mods: { M: 1, T: 1, I: 1 }, rules: [], duration: "Until end of turn" },
+    ],
+    // Paste these in to fill them out — structure matches Daemonology above.
+    "battle-magic": [],
+    "dark-magic": [],
+    "shadowlands": [],
+  };
+
   const DURATIONS = [
     "Until start of your next turn",
     "Until end of turn",
@@ -140,6 +177,6 @@
   ];
 
   window.WOC_DATA = {
-    STATS, UNITS, UNIT_INDEX, MOUNTS, MOUNT_INDEX, MARKS, GAZE_REWARDS, SPELL_EFFECTS, DURATIONS, norm,
+    STATS, UNITS, UNIT_INDEX, MOUNTS, MOUNT_INDEX, MARKS, GAZE_REWARDS, SPELL_EFFECTS, LORES, LORE_NAMES, DURATIONS, norm,
   };
 })();

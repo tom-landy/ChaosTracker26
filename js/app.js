@@ -225,8 +225,10 @@
       ]));
     }
     for (const ef of u.effects || []) {
-      chips.append(el("span", { class: "achip " + (ef.kind === "hex" ? "hex" : "aug") }, [
-        (ef.kind === "hex" ? "▼ " : "▲ ") + ef.name + (ef.duration ? " · " + shortDur(ef.duration) : ""),
+      const cls = ef.kind === "hex" ? "hex" : ef.kind === "augment" ? "aug" : "info";
+      const sym = ef.kind === "hex" ? "▼ " : ef.kind === "augment" ? "▲ " : "✦ ";
+      chips.append(el("span", { class: "achip " + cls }, [
+        sym + ef.name + (ef.duration ? " · " + shortDur(ef.duration) : ""),
         el("button", { class: "x", onclick: () => { u.effects = u.effects.filter((x) => x !== ef); save(); render(); } }, "×"),
       ]));
     }
@@ -356,6 +358,46 @@
       u.effects.push(ef);
       save(); render(); closeModal();
     }
+
+    // --- Lore spells -------------------------------------------------------
+    // Apply a known spell: instant damage spells just flash a reminder; spells
+    // with an ongoing effect are added with their own duration.
+    function castSpell(sp) {
+      if (sp.instant) { flash(sp.name + " — " + describeMods(sp)); return; }
+      u.effects = u.effects || [];
+      u.effects.push({ id: sp.id, kind: sp.kind || "augment", name: sp.name, mods: clone(sp.mods || {}), rules: (sp.rules || []).slice(), duration: sp.duration || "Until end of turn" });
+      save(); render(); closeModal();
+    }
+    const loreIds = Array.from(new Set([].concat(u.lores || [], Object.keys(D.LORES))));
+    if (loreIds.length) {
+      body.append(el("h4", {}, "✦ Lore spells"));
+      const loreSel = el("select", {});
+      for (const id of loreIds) loreSel.append(el("option", { value: id, selected: (u.activeLore === id || (!u.activeLore && id === loreIds[0])) ? "selected" : null }, D.LORE_NAMES[id] || id));
+      body.append(el("div", { class: "durrow" }, [el("span", { class: "muted small" }, "Lore:"), loreSel]));
+      const spellList = el("div", { class: "picklist" });
+      function renderLore() {
+        spellList.innerHTML = "";
+        const spells = D.LORES[loreSel.value] || [];
+        if (!spells.length) {
+          spellList.append(el("div", { class: "muted small" }, "No spells stored for " + (D.LORE_NAMES[loreSel.value] || loreSel.value) + " yet — paste it to me and I'll add it, or use the building blocks below."));
+          return;
+        }
+        for (const sp of spells) {
+          const meta = [sp.type, "CV " + sp.cv, sp.range].filter(Boolean).join(" · ");
+          spellList.append(el("button", { class: "pick spell " + (sp.kind === "hex" ? "hex" : sp.kind === "augment" ? "augment" : ""), onclick: () => castSpell(sp) }, [
+            el("b", {}, sp.name + (sp.instant ? "" : "")),
+            el("span", { class: "spellmeta" }, meta),
+            el("span", { class: "muted small" }, describeMods(sp)),
+          ]));
+        }
+      }
+      loreSel.addEventListener("change", renderLore);
+      renderLore();
+      body.append(spellList);
+      body.append(el("p", { class: "muted small", html: "Apply augments to the caster/target unit. Instant Magic Missile / Assailment spells just show a reminder." }));
+    }
+
+    body.append(el("h4", {}, "Building blocks"));
     for (const group of ["augment", "hex"]) {
       body.append(el("h4", { class: group === "augment" ? "augh" : "hexh" }, group === "augment" ? "▲ Augments (buffs)" : "▼ Hexes (debuffs)"));
       const list = el("div", { class: "picklist" });

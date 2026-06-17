@@ -29,6 +29,8 @@
       mount: null,
       mountProfile: null,   // secondary stat line when mounted (editable)
       mountWoundsLost: 0,
+      lores: [],            // lore ids available to this caster
+      activeLore: null,     // the lore chosen in the list
       options: [],        // equipment / command / wargear strings
       baseRules: [],      // static special rules from the list
       rewards: [],        // Gaze of the Gods
@@ -146,8 +148,9 @@
     if (entry.specialRules && entry.specialRules.name_en) {
       u.baseRules = entry.specialRules.name_en.split(",").map((s) => cleanName(s)).filter(Boolean);
     }
-    // Active lore for casters.
-    if (entry.activeLore) u.notes = (u.notes ? u.notes + " · " : "") + "Lore: " + entry.activeLore;
+    // Lores available to this caster.
+    if (Array.isArray(entry.lores)) u.lores = entry.lores.slice();
+    if (entry.activeLore) u.activeLore = entry.activeLore;
 
     return u;
   }
