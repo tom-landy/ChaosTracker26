@@ -9,7 +9,7 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v22"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v23"; // shown in the footer; matches the service-worker cache
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
@@ -363,10 +363,8 @@
         (n) => { u.modelsLost = Math.max(0, Math.min(u.models, u.models - n)); save(); render(); }, true));
     }
     if (isSingle || multiWound) {
-      track.append(stepper(u.mountProfile ? "Wounds*" : "Wounds", wrem, wmax,
-        () => { if ((u.woundsLost || 0) > 0) { u.woundsLost--; save(); render(); } },
-        () => { if ((u.woundsLost || 0) < wmax) { u.woundsLost = (u.woundsLost || 0) + 1; save(); render(); } },
-        (n) => { u.woundsLost = Math.max(0, Math.min(wmax, wmax - n)); save(); render(); }));
+      track.append(stepper(u.mountProfile ? "Wounds*" : "Wounds", wrem, wmax, null, null,
+        (n) => { u.woundsLost = Math.max(0, Math.min(wmax, wmax - n)); save(); render(); }, true));
     }
     card.append(track);
 
