@@ -169,6 +169,8 @@ button.icon.danger { color: var(--danger); }
 .stats.mount .stat-v { font-size: 14px; color: #ddccd6; }
 .stat.mlabel { background: transparent; border: none; display: flex; flex-direction: column; justify-content: center; }
 .stat.mlabel .mlbl { font-size: 11px; color: var(--brass); font-weight: 800; }
+.stats.mount .stat.mountadd { border-style: solid; border-color: var(--brass-d); background: rgba(205,162,63,0.1); }
+.stats.mount .stat.mountadd .stat-v { color: var(--brass); }
 .stat.ghostcell { background: transparent; border: none; }
 
 /* trackers */

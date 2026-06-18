@@ -25,9 +25,29 @@
   function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; } }
 
   // ---- derived stats -------------------------------------------------------
-  // Sum numeric mods from mark + rewards + effects onto the base profile.
+  // A mount value of "+N" is added to the rider; a plain number is the mount's
+  // own stat (only Movement folds into the model). Returns a profile with the
+  // mount folded in, so mount contributions are part of the model's baseline.
+  function mountAdd(v) {
+    if (typeof v !== "string") return null;
+    const m = v.replace(/[()\s]/g, "").match(/^\+(\d+)$/);
+    return m ? parseInt(m[1], 10) : null;
+  }
+  function foldMount(profile, mp) {
+    const out = Object.assign({}, profile);
+    if (!mp) return out;
+    // model moves at the mount's Movement
+    if (mp.M != null && mp.M !== "" && mountAdd(mp.M) == null) out.M = parseInt(mp.M, 10);
+    for (const k of D.STATS) {
+      const add = mountAdd(mp[k]);
+      if (add != null) out[k] = (parseInt(out[k], 10) || 0) + add;
+    }
+    return out;
+  }
+
+  // Sum numeric mods from mark + rewards + effects onto the (mount-folded) base.
   function effective(unit) {
-    const base = unit.profile;
+    const base = foldMount(unit.profile, unit.mountProfile);
     const eff = {};
     for (const k of D.STATS) eff[k] = num(base[k]);
     eff.Sv = base.Sv; eff.Ward = base.Ward;
@@ -138,10 +158,20 @@
     ]);
   }
 
+  function fmtMount(v) {
+    if (v == null || v === "") return "–";
+    const s = String(v);
+    return /^\+/.test(s) ? "(" + s + ")" : s;
+  }
+
   function unitCard(u) {
     const { eff, base, rules } = effective(u);
     const ri = rankInfo(u);
-    const card = el("div", { class: "card mark-" + (u.mark || "none") + (modelsRemaining(u) <= 0 ? " dead" : "") });
+    const isSingle = u.isChar || u.models <= 1;
+    const wmax = num(base.W) || 1;
+    const wrem = Math.max(0, wmax - (u.woundsLost || 0));
+    const dead = modelsRemaining(u) <= 0 || (isSingle && wrem <= 0);
+    const card = el("div", { class: "card mark-" + (u.mark || "none") + (dead ? " dead" : "") });
 
     // header
     const title = el("input", {
@@ -164,19 +194,25 @@
     statsRow.append(statCell("Wd", eff.Ward ? eff.Ward + "+" : "–", base.Ward ? base.Ward + "+" : "", true));
     card.append(statsRow);
 
-    // mount secondary stat line
+    // mount line — shown as the mount's own printed profile; "(+N)" entries are
+    // already folded into the rider's line above (its actual T/W/M).
     if (u.mountProfile) {
       const mp = u.mountProfile;
       const mRow = el("div", { class: "stats mount" });
       mRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "🐎"), el("div", { class: "stat-v mlbl" }, "Mt")]));
-      for (const k of D.STATS) mRow.append(statCell(k, mp[k] === "" || mp[k] == null ? "–" : mp[k], ""));
+      for (const k of D.STATS) {
+        const add = typeof mp[k] === "string" && /^\+/.test(mp[k]);
+        mRow.append(el("div", { class: "stat" + (add ? " mountadd" : "") }, [
+          el("div", { class: "stat-l" }, k),
+          el("div", { class: "stat-v mlbl" }, fmtMount(mp[k])),
+        ]));
+      }
       mRow.append(el("div", { class: "stat ghostcell" })); // pad to align with Sv/Wd
       card.append(mRow);
     }
 
     // casualties / wounds tracker
     const track = el("div", { class: "track" });
-    const isSingle = u.isChar || u.models <= 1;
     const multiWound = num(base.W) > 1;
     if (!isSingle) {
       track.append(stepper("Models", modelsRemaining(u), u.models,
@@ -189,18 +225,9 @@
       track.append(rb);
     }
     if (isSingle || multiWound) {
-      const wmax = num(base.W) || 1;
-      const wrem = Math.max(0, wmax - (u.woundsLost || 0));
-      track.append(stepper("Wounds", wrem, wmax,
+      track.append(stepper(u.mountProfile ? "Wounds*" : "Wounds", wrem, wmax,
         () => { if ((u.woundsLost || 0) < wmax) { u.woundsLost = (u.woundsLost || 0) + 1; save(); render(); } },
         () => { if ((u.woundsLost || 0) > 0) { u.woundsLost--; save(); render(); } }));
-    }
-    if (u.mountProfile && num(u.mountProfile.W) > 1) {
-      const mw = num(u.mountProfile.W);
-      const mrem = Math.max(0, mw - (u.mountWoundsLost || 0));
-      track.append(stepper("🐎 Wnds", mrem, mw,
-        () => { if ((u.mountWoundsLost || 0) < mw) { u.mountWoundsLost = (u.mountWoundsLost || 0) + 1; save(); render(); } },
-        () => { if ((u.mountWoundsLost || 0) > 0) { u.mountWoundsLost--; save(); render(); } }));
     }
     card.append(track);
 
@@ -461,10 +488,18 @@
     ]);
     body.append(mountRow);
     if (u.mountProfile) {
+      body.append(el("p", { class: "muted small", html: "Use <b>+N</b> for stats the mount adds to the rider (e.g. T <b>+1</b>, W <b>+6</b>), a plain number for the mount's own stat (Movement &amp; its attacks), or <b>-</b> for none." }));
       const mgrid = el("div", { class: "editgrid" });
       for (const k of D.STATS) {
-        mgrid.append(el("label", {}, [k, el("input", { value: u.mountProfile[k] == null ? "" : u.mountProfile[k], inputmode: "numeric",
-          onchange: (e) => { u.mountProfile[k] = e.target.value === "" ? "" : parseInt(e.target.value, 10); save(); render(); } })]));
+        mgrid.append(el("label", {}, [k, el("input", { value: u.mountProfile[k] == null ? "" : u.mountProfile[k],
+          onchange: (e) => {
+            let v = e.target.value.trim();
+            if (v === "" || v === "-") u.mountProfile[k] = null;
+            else if (/^\(?\+\s*\d+\)?$/.test(v)) u.mountProfile[k] = "+" + v.replace(/\D/g, "");
+            else if (/^-?\d+$/.test(v)) u.mountProfile[k] = parseInt(v, 10);
+            else u.mountProfile[k] = v;
+            save(); render();
+          } })]));
       }
       body.append(mgrid);
     }

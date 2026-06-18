@@ -62,15 +62,15 @@
   }
 
   // --- Mounts (editable defaults) --------------------------------------------
-  // A mounted character is one model, but rider and mount have separate profiles
-  // and the mount adds its own Attacks and wounds. Tracked as a secondary line.
+  // The Old World: a ridden mount is part of the rider's model. A "+N" value is
+  // ADDED to the rider's characteristic (e.g. a Chaos Dragon gives +1 T and +6 W);
+  // a plain number is the mount's OWN value (its Movement and its own attacks);
+  // null ("-") means none. The model moves at the mount's Movement.
   const MOUNTS = [
-    { name: "Chaos Steed", profile: p(8, 3, 0, 4, 4, 1, 3, 1, 5), note: "Barded" },
-    { name: "Daemonic Mount", profile: p(8, 4, 0, 4, 4, 1, 4, 2, 7) },
-    { name: "Chaos Dragon", profile: p(6, 6, 0, 6, 6, 6, 3, 4, 8), note: "Fly, Terror, Large Target, Breath Weapon" },
-    { name: "Manticore", profile: p(6, 5, 0, 5, 5, 4, 5, 4, 5), note: "Fly, Terror, Large Target" },
-    { name: "Chaos Chariot", profile: p(8, 0, 0, 5, 5, 4, 0, 0, 0), note: "Chariot — crew & steeds attack separately" },
-    { name: "Gorebeast Chariot", profile: p(7, 0, 0, 5, 6, 5, 0, 0, 0), note: "Chariot" },
+    { name: "Chaos Steed", profile: { M: 8, WS: 3, BS: null, S: 3, T: null, W: null, I: 3, A: 1, Ld: null }, note: "Barded" },
+    { name: "Daemonic Mount", profile: { M: 8, WS: 4, BS: null, S: 4, T: null, W: null, I: 4, A: 2, Ld: null } },
+    { name: "Chaos Dragon", profile: { M: 6, WS: 6, BS: null, S: 7, T: "+1", W: "+6", I: 4, A: 6, Ld: null }, note: "Fly, Terror, Large Target, Breath Weapon" },
+    { name: "Manticore", profile: { M: 6, WS: 5, BS: null, S: 5, T: "+1", W: "+3", I: 5, A: 4, Ld: null }, note: "Fly, Terror, Large Target — VERIFY stats" },
   ];
   const MOUNT_INDEX = {};
   for (const m of MOUNTS) { MOUNT_INDEX[norm(m.name)] = m; MOUNT_INDEX[norm(m.name).replace(/s$/, "")] = m; }
