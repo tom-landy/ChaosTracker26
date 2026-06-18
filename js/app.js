@@ -10,13 +10,24 @@
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
+  const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
 
   // ---- state ---------------------------------------------------------------
-  let state = load() || { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION };
+  let state = load() || { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION };
   // Migrate older saves to the corrected Gaze of the Gods table, persisting once.
   if (!state.gaze || state.gazeVersion !== GAZE_VERSION) {
     state.gaze = clone(D.GAZE_REWARDS);
     state.gazeVersion = GAZE_VERSION;
+    save();
+  }
+  // Re-apply canonical mount profiles to existing units after a mount-data fix.
+  if (state.mountVersion !== MOUNT_VERSION) {
+    for (const u of state.units || []) {
+      if (!u.mount) continue;
+      const mdef = D.MOUNT_INDEX[D.norm(u.mount)] || D.MOUNT_INDEX[D.norm(u.mount).replace(/s$/, "")];
+      if (mdef) { u.mountProfile = clone(mdef.profile); u.mountNote = mdef.note || null; }
+    }
+    state.mountVersion = MOUNT_VERSION;
     save();
   }
 
@@ -209,6 +220,7 @@
       }
       mRow.append(el("div", { class: "stat ghostcell" })); // pad to align with Sv/Wd
       card.append(mRow);
+      if (u.mountNote) card.append(el("div", { class: "mountnote muted small" }, u.mountNote));
     }
 
     // casualties / wounds tracker
@@ -625,7 +637,7 @@
     $("#btnEndTurn").addEventListener("click", clearTurnEffects);
     $("#btnReset").addEventListener("click", () => {
       if (confirm("Clear the whole army? This can't be undone.")) {
-        state = { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION };
+        state = { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION };
         save(); render();
       }
     });

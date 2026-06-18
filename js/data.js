@@ -67,10 +67,11 @@
   // a plain number is the mount's OWN value (its Movement and its own attacks);
   // null ("-") means none. The model moves at the mount's Movement.
   const MOUNTS = [
-    { name: "Chaos Steed", profile: { M: 8, WS: 3, BS: null, S: 3, T: null, W: null, I: 3, A: 1, Ld: null }, note: "Barded" },
-    { name: "Daemonic Mount", profile: { M: 8, WS: 4, BS: null, S: 4, T: null, W: null, I: 4, A: 2, Ld: null } },
-    { name: "Chaos Dragon", profile: { M: 6, WS: 6, BS: null, S: 7, T: "+1", W: "+6", I: 4, A: 6, Ld: null }, note: "Fly, Terror, Large Target, Breath Weapon" },
-    { name: "Manticore", profile: { M: 6, WS: 5, BS: null, S: 5, T: "+1", W: "+3", I: 5, A: 4, Ld: null }, note: "Fly, Terror, Large Target — VERIFY stats" },
+    { name: "Chaos Steed", profile: { M: 7, WS: 3, BS: null, S: 4, T: null, W: null, I: 3, A: 1, Ld: null }, note: "Counter Charge, First Charge, Swiftstride; barding" },
+    { name: "Warhorse", profile: { M: 8, WS: 3, BS: null, S: 3, T: null, W: null, I: 3, A: 1, Ld: null }, note: "Counter Charge, Fast Cavalry, Swiftstride" },
+    { name: "Daemonic Mount", profile: { M: 8, WS: 4, BS: null, S: 5, T: null, W: "+1", I: 3, A: 2, Ld: null }, note: "Armour Bane (1), Fear, Magical Attacks, Mark of Chaos" },
+    { name: "Chaos Dragon", profile: { M: 6, WS: 6, BS: null, S: 7, T: "+1", W: "+6", I: 4, A: 6, Ld: null }, note: "Fly (10), Impetuous, Large Target, Stomp Attacks (D6), Swiftstride, Terror, Two-headed Dragon" },
+    { name: "Manticore", profile: { M: 6, WS: 5, BS: null, S: 5, T: null, W: "+4", I: 5, A: 4, Ld: null }, note: "Fly (9), Large Target, Stomp Attacks (D3), Swiftstride, Terror, Wilful Beast" },
   ];
   const MOUNT_INDEX = {};
   for (const m of MOUNTS) { MOUNT_INDEX[norm(m.name)] = m; MOUNT_INDEX[norm(m.name).replace(/s$/, "")] = m; }
@@ -145,6 +146,7 @@
     "illusion": "Illusion",
     "necromancy": "Necromancy",
     "high-magic": "High Magic",
+    "nurgle": "Mark of Nurgle",
   };
   const LORES = {
     daemonology: [
@@ -162,6 +164,11 @@
         mods: {}, rules: ['Remains in play: 3" template is difficult terrain, scatters D6" each turn; units it crosses take D6+1 hits at S3'], duration: "Remains in play" },
       { id: "dae-6", name: "Daemonic Vigour", type: "Enchantment", cv: "9+", range: '15"', kind: "augment",
         mods: { M: 1, T: 1, I: 1 }, rules: [], duration: "Until end of turn" },
+    ],
+    // Signature spell available to Mark of Nurgle wizards (any lore).
+    nurgle: [
+      { id: "nurgle-sig", name: "Fleshy Abundance", type: "Enchantment", cv: "7+", range: "Self", kind: "augment",
+        mods: { T: 1 }, rules: ["Mark of Nurgle only; remains in play; caster & joined unit (T max 7)"], duration: "Remains in play" },
     ],
     // Paste these in to fill them out — structure matches Daemonology above.
     "battle-magic": [],
