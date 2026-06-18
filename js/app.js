@@ -98,6 +98,8 @@
       if (mods) for (const k in mods) {
         if (k === "Ward") { eff.Ward = bestSave(eff.Ward, mods.Ward); }
         else if (k === "Sv") { eff.Sv = bestSave(eff.Sv, mods.Sv); }
+        else if (k === "SvMod") { eff.Sv = worsenSave(eff.Sv, mods.SvMod); }
+        else if (k === "WardMod") { eff.Ward = worsenSave(eff.Ward, mods.WardMod); }
         else if (typeof eff[k] === "number") eff[k] = eff[k] + mods[k];
       }
       if (rls) for (const r of rls) rules.push({ text: r, src: label });
@@ -138,6 +140,12 @@
     if (a == null) return b;
     if (b == null) return a;
     return Math.min(a, b);
+  }
+  // Worsen a save by a penalty (higher number); a save past 6+ is lost entirely.
+  function worsenSave(sv, penalty) {
+    if (sv == null) return null; // no save to worsen
+    const v = sv + (penalty || 0);
+    return v > 6 ? null : v;
   }
   function num(v) { const n = parseInt(v, 10); return isNaN(n) ? "" : n; }
   function findReward(rid) {

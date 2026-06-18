@@ -144,6 +144,8 @@
     { id: "hex-hit", kind: "hex", name: "-1 To Hit", mods: {}, rules: ["-1 To Hit"] },
     { id: "hex-wound", kind: "hex", name: "-1 To Wound", mods: {}, rules: ["-1 To Wound"] },
     { id: "hex-ld", kind: "hex", name: "-1 Leadership", mods: { Ld: -1 } },
+    { id: "hex-sv1", kind: "hex", name: "-1 Armour Save", mods: { SvMod: 1 }, rules: ["-1 to armour value"] },
+    { id: "hex-sv2", kind: "hex", name: "-2 Armour Save", mods: { SvMod: 2 }, rules: ["-2 to armour value (e.g. Plague of Rust)"] },
     { id: "hex-noarmour", kind: "hex", name: "No Armour Save", mods: {}, rules: ["No Armour Save allowed"] },
     { id: "hex-strikelast", kind: "hex", name: "Strikes Last", mods: {}, rules: ["Always Strikes Last"] },
     { id: "hex-nomarch", kind: "hex", name: "Cannot March", mods: {}, rules: ["Cannot March"] },
