@@ -27,13 +27,13 @@
   // profiles and key special rules. All values are editable in-app.
   const UNITS = [
     // Characters
-    { name: "Chaos Lord", category: "Characters", isChar: true, profile: p(4, 7, 3, 5, 5, 4, 6, 5, 9, { Sv: 4 }), note: "Full plate. Chaos Armour (5+), Gaze of the Gods" },
-    { name: "Exalted Champion", category: "Characters", isChar: true, profile: p(4, 6, 3, 5, 4, 3, 5, 4, 8, { Sv: 5 }), note: "Chaos Armour (5+), Gaze of the Gods" },
-    { name: "Aspiring Champion", category: "Characters", isChar: true, profile: p(4, 5, 3, 4, 4, 2, 4, 3, 8, { Sv: 5 }), note: "Chaos Armour (5+), Gaze of the Gods" },
-    { name: "Sorcerer Lord", category: "Characters", isChar: true, profile: p(4, 5, 3, 4, 4, 3, 4, 3, 8, { Sv: 5 }), note: "Wizard. Chaos Armour (5+), Lore of Chaos" },
-    { name: "Exalted Sorcerer", category: "Characters", isChar: true, profile: p(4, 4, 3, 4, 4, 2, 3, 2, 8, { Sv: 6 }), note: "Wizard. Chaos Armour (5+), Lore of Chaos" },
-    { name: "Daemon Prince", category: "Characters", isChar: true, profile: p(6, 7, 5, 6, 5, 4, 7, 5, 9, { Sv: 4 }), note: "Wizard. Chaos Armour (4+), Regeneration (5+), Fear, Unbreakable" },
-    { name: "Marauder Tribe Chieftain", category: "Characters", isChar: true, profile: p(4, 5, 3, 4, 4, 2, 4, 3, 8, { Sv: 6 }), note: "Chaos Armour (6+), Gaze of the Gods, Warband" },
+    { name: "Chaos Lord", category: "Characters", isChar: true, gaze: true, profile: p(4, 7, 3, 5, 5, 4, 6, 5, 9, { Sv: 4 }), note: "Full plate. Chaos Armour (5+), Gaze of the Gods" },
+    { name: "Exalted Champion", category: "Characters", isChar: true, gaze: true, profile: p(4, 6, 3, 5, 4, 3, 5, 4, 8, { Sv: 5 }), note: "Chaos Armour (5+), Gaze of the Gods" },
+    { name: "Aspiring Champion", category: "Characters", isChar: true, gaze: true, profile: p(4, 5, 3, 4, 4, 2, 4, 3, 8, { Sv: 5 }), note: "Chaos Armour (5+), Gaze of the Gods" },
+    { name: "Sorcerer Lord", category: "Characters", isChar: true, gaze: true, profile: p(4, 5, 3, 4, 4, 3, 4, 3, 8, { Sv: 5 }), note: "Wizard. Chaos Armour (5+), Gaze of the Gods, Lore of Chaos" },
+    { name: "Exalted Sorcerer", category: "Characters", isChar: true, gaze: true, profile: p(4, 4, 3, 4, 4, 2, 3, 2, 8, { Sv: 6 }), note: "Wizard. Chaos Armour (5+), Gaze of the Gods, Lore of Chaos" },
+    { name: "Daemon Prince", category: "Characters", isChar: true, gaze: true, profile: p(6, 7, 5, 6, 5, 4, 7, 5, 9, { Sv: 4 }), note: "Wizard. Chaos Armour (4+), Gaze of the Gods, Regeneration (5+), Fear, Unbreakable" },
+    { name: "Marauder Tribe Chieftain", category: "Characters", isChar: true, gaze: true, profile: p(4, 5, 3, 4, 4, 2, 4, 3, 8, { Sv: 6 }), note: "Chaos Armour (6+), Gaze of the Gods, Warband" },
     { name: "Chaos Warhound Handler", category: "Characters", isChar: true, profile: p(5, 5, 3, 4, 4, 1, 4, 1, 8, { Sv: 5 }), note: "Handler, Loner, Vanguard" },
 
     // Core / regiments
@@ -62,7 +62,7 @@
     { name: "Warpfire Dragon", category: "Rare", isChar: false, monster: true, profile: p(6, 6, 0, 6, 6, 6, 3, 5, 8, { Sv: 4 }), note: "Behemoth. Fly (10), Terror, Lore of Chaos, Magic Resistance (-2)" },
 
     // Named characters
-    { name: "Frydaal The Chainmaker", category: "Characters", isChar: true, profile: p(4, 6, 3, 5, 4, 3, 5, 4, 9, { Sv: 3 }), note: "Named. Full plate + shield. Storm's Wrath, Gaze of the Gods" },
+    { name: "Frydaal The Chainmaker", category: "Characters", isChar: true, gaze: true, profile: p(4, 6, 3, 5, 4, 3, 5, 4, 9, { Sv: 3 }), note: "Named. Full plate + shield. Storm's Wrath, Gaze of the Gods" },
     { name: "Galrauch", category: "Characters", isChar: true, monster: true, profile: p(6, 6, 3, 6, 6, 6, 4, 6, 9, { Sv: 4 }), note: "Named. Behemoth. Wizard (Dark Magic). Fly (10), Mark of Tzeentch, Terror" },
   ];
 

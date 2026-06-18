@@ -325,8 +325,10 @@
     if (chips.children.length) card.append(chips);
 
     // action buttons
+    const def = P.matchUnit(u.name);
+    const canGaze = !!(def && def.gaze) || /gaze of the gods/i.test((u.baseRules || []).join(" ") + " " + (u.notes || ""));
     card.append(el("div", { class: "u-actions" }, [
-      el("button", { class: "act gaze", onclick: () => gazeModal(u) }, "👁 Gaze"),
+      canGaze ? el("button", { class: "act gaze", onclick: () => gazeModal(u) }, "👁 Gaze") : null,
       el("button", { class: "act spell", onclick: () => effectModal(u) }, "✦ Spell"),
       el("button", { class: "act item", onclick: () => itemsModal(u) }, "⚜ Items"),
       el("button", { class: "act", onclick: () => editModal(u) }, "✎ Edit"),
