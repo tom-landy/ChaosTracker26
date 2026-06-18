@@ -350,3 +350,10 @@ button.icon.flag.on { color: var(--gaze); }
 .dispel:hover { border-color: var(--hex); color: var(--hex); }
 .managerow { display: flex; gap: 8px; margin: 6px 0; }
 .managerow button { flex: 1; }
+
+/* help + version + a11y */
+.ver { display: block; margin-top: 6px; opacity: 0.6; }
+.help h4 { margin: 12px 0 4px; color: var(--brass); font-size: 14px; }
+.help p { margin: 4px 0; }
+:focus-visible { outline: 2px solid var(--gaze); outline-offset: 1px; }
+button:focus-visible, a.tag:focus-visible { outline: 2px solid var(--gaze); outline-offset: 2px; }

@@ -9,6 +9,7 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
+  const APP_VERSION = "v19"; // shown in the footer; matches the service-worker cache
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
@@ -850,6 +851,20 @@
     save(); render();
     flash("Restored " + armies.length + " army/ies.");
   }
+  function helpModal() {
+    const body = el("div", { class: "help" });
+    body.innerHTML =
+      "<p class='muted small'>A live battle tracker for Warriors of Chaos. Everything saves on this device.</p>" +
+      "<h4>Stats</h4><p class='small'>Each unit shows its live profile. A changed characteristic turns <b style='color:#69c98a'>green ▲</b> when improved and <b style='color:#e0685c'>red ▼</b> when worsened, with the original value beneath. Characteristics cap at 10.</p>" +
+      "<h4>Extra lines</h4><p class='small'>🐎 <b>Mount</b> shows the mount's own profile; its <b>(+N)</b> bonuses are already folded into the rider above. <b>Ch ★</b> shows only the champion's differing stats.</p>" +
+      "<h4>Casualties</h4><p class='small'><b>−</b> takes a wound / removes a model, <b>+</b> restores. Tap the number to set it exactly. Badges flag <b>½ strength</b>, <b>Fleeing</b> (⚑ toggle) and <b>Destroyed</b>.</p>" +
+      "<h4>Turn</h4><p class='small'><b>Next ▶</b> advances the turn and clears spells lasting “until your next turn / end of turn”. Lasting Gaze rewards, items and remains-in-play spells stay.</p>" +
+      "<h4>Gaze · Spell · Items</h4><p class='small'>👁 <b>Gaze</b> (characters with the rule): roll a D6 or pick a result. ✦ <b>Spell</b>: pick a lore spell or building block; augments/hexes change stats live. ⚜ <b>Items</b>: gifts, magic items &amp; traits.</p>" +
+      "<h4>Armies</h4><p class='small'>Use the dropdown to switch armies; the ☰ menu has New / Rename / Delete, New battle (reset combat state), and <b>Backup / Restore</b> to a file.</p>" +
+      "<p class='muted small'>Tap any special-rule tag to open its page on tow.whfb.app. Unofficial fan tool; values are editable defaults — verify against your book.</p>";
+    openModal("How to use", body, [el("button", { onclick: closeModal }, "Got it")]);
+  }
+
   function restore() {
     const inp = $("#restoreFile");
     inp.value = "";
@@ -900,6 +915,8 @@
     $("#btnCollapseAll").addEventListener("click", collapseAll);
     $("#btnBackup").addEventListener("click", backup);
     $("#btnRestore").addEventListener("click", restore);
+    $("#btnHelp").addEventListener("click", helpModal);
+    const ver = $("#appVer"); if (ver) ver.textContent = "ChaosTracker26 · " + APP_VERSION;
     // menu open/close
     const menuPanel = $("#menuPanel");
     const toggleMenu = (open) => { if (!menuPanel) return; const show = open == null ? menuPanel.hasAttribute("hidden") : open; if (show) menuPanel.removeAttribute("hidden"); else menuPanel.setAttribute("hidden", ""); };

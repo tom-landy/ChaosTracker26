@@ -4,17 +4,29 @@ A simple, installable battle tracker for **Warriors of Chaos** in *Warhammer: Th
 Paste/import your Old World Builder army and, in real time, keep on top of the table admin:
 
 - **Live stat lines** — every unit's effective profile recomputes instantly from its
-  base stats + Mark of Chaos + Gaze of the Gods rewards + active spells + casualties.
-  Changed characteristics are highlighted with the original value shown underneath.
-- **Gaze of the Gods** — roll a D6 (in your Command sub-phase) or pick a result; lasting
-  rewards stack for the battle and temporary ones clear at end of turn. The whole table is
-  **editable** to match your Arcane Journal.
-- **Spells & effects** — apply augments (buffs) and hexes (debuffs) from a library or add
-  custom ones, each with a duration. One tap on **End of turn** clears the short-lived ones.
-- **Wounds & casualties** — steppers for models remaining (with live rank bonus) and for
-  wounds on characters/monsters/multi-wound models.
+  base stats + Mark of Chaos + Gaze of the Gods rewards + magic items + active spells +
+  casualties. Improved characteristics show green ▲, worsened ones red ▼, with the original
+  value beneath. Characteristics cap at 10.
+- **Mounts** folded the Old World way — a ridden monster's `(+N)` stats add to the rider
+  (e.g. Chaos Dragon gives +1 T, +6 W) and the model moves at the mount's Movement; the
+  mount's own profile is shown for reference.
+- **Champions & command** — a condensed champion line shows only the champion's differing
+  stats; chips show Standard / Musician / Battle Standard / General.
+- **Gaze of the Gods** (characters with the rule) — roll a D6 or pick a result; lasting
+  rewards stay for the battle, temporary ones clear on your next turn. Table is editable.
+- **Spells & lores** — Battle Magic, Daemonology, Dark Magic and the Lore of the Shadowlands
+  plus the Mark signature spells, or generic augment/hex building blocks and custom effects.
+  Stat-changing spells update the unit live; instant Magic Missiles just flash a reminder.
+- **Gifts, magic items & chaotic traits** — a full library; effects with a clean stat change
+  apply live, others show as a reminder. Imported wargear auto-links to its effect.
+- **Wounds & casualties** — model and wound steppers (tap the number to set it exactly),
+  with ½-strength, Fleeing and Destroyed badges and a per-army summary.
+- **Turn tracker** — advance the turn to clear non-permanent additions in one tap.
+- **Multiple armies** — keep several lists, switch between them, import each as its own army.
+- **Backup / Restore** to a JSON file, **collapsible** unit cards, and clickable special-rule
+  links to tow.whfb.app.
 - **Works offline** and installs to your phone home screen (PWA). Everything is saved
-  locally on your device.
+  locally on your device — use **Backup to file** to move it between devices.
 
 > ⚔️ **Stat lines and the Gaze of the Gods table are sensible *editable defaults*** so the
 > app is useful out of the box. Tap **✎ Edit** on a unit (or **Edit table** in the Gaze
