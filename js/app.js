@@ -281,11 +281,14 @@
     if (def && def.champ && (hasChampion || !(u.options || []).length)) {
       const champ = effective(u, def.champ).eff; // champion gets the same unit buffs, plus its own profile
       const cRow = el("div", { class: "stats champ" });
-      for (const k of D.STATS) cRow.append(statCell(k, champ[k], eff[k]));
+      // only show cells where the champion differs; blanks keep column alignment
+      for (const k of D.STATS) {
+        if (num(champ[k]) !== num(eff[k])) cRow.append(statCell(k, champ[k], eff[k]));
+        else cRow.append(el("div", { class: "stat ghostcell" }));
+      }
       cRow.append(el("div", { class: "stat ghostcell" })); // under Sv
-      cRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "Ch"), el("div", { class: "stat-v mlbl" }, "★")]));
+      cRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "Ch"), el("div", { class: "stat-v mlbl", title: def.champName || "Champion" }, "★")]));
       card.append(cRow);
-      if (def.champName) card.append(el("div", { class: "mountnote muted small" }, def.champName + " (champion)"));
     }
 
     // command models present (champion / standard / musician / BSB / general)
