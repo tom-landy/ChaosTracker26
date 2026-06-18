@@ -158,6 +158,12 @@
   }
 
   function modelsRemaining(u) { return Math.max(0, (u.models || 0) - (u.modelsLost || 0)); }
+  function unitDead(u) {
+    const w = num((u.profile && u.profile.W)) || 1;
+    const single = u.isChar || u.models <= 1;
+    return modelsRemaining(u) <= 0 || (single && (w + sumMountW(u) - (u.woundsLost || 0)) <= 0);
+  }
+  function sumMountW(u) { const a = u.mountProfile && mountAdd(u.mountProfile.W); return a || 0; }
 
   // Build a link to a special rule's page on tow.whfb.app (parentheticals stripped).
   function ruleLookupUrl(name) {
@@ -204,6 +210,15 @@
       ]));
       return;
     }
+    // army summary
+    const total = state.units.length;
+    const destroyed = state.units.filter(unitDead).length;
+    const models = state.units.reduce((s, u) => s + (unitDead(u) ? 0 : modelsRemaining(u)), 0);
+    const parts = [(total - destroyed) + "/" + total + " units", models + " models"];
+    if (state.meta.points) parts.push(state.meta.points + " pts");
+    if (destroyed) parts.push(destroyed + " destroyed");
+    root.append(el("div", { class: "summary muted small" }, parts.join("  ·  ")));
+
     const cats = ["Characters", "Core", "Special", "Rare", "Allies"];
     const order = {}; cats.forEach((c, i) => (order[c] = i));
     const sorted = [...state.units].sort((a, b) => (order[a.category] ?? 9) - (order[b.category] ?? 9));
@@ -240,97 +255,101 @@
 
   function unitCard(u) {
     const { eff, base, rules } = effective(u);
+    const def = P.matchUnit(u.name);
     const isSingle = u.isChar || u.models <= 1;
     const wmax = num(base.W) || 1;
     const wrem = Math.max(0, wmax - (u.woundsLost || 0));
-    const dead = modelsRemaining(u) <= 0 || (isSingle && wrem <= 0);
-    const card = el("div", { class: "card mark-" + (u.mark || "none") + (dead ? " dead" : "") });
+    const remModels = modelsRemaining(u);
+    const dead = remModels <= 0 || (isSingle && wrem <= 0);
+    const half = !isSingle && remModels > 0 && remModels <= Math.floor(u.models / 2);
+    const card = el("div", { class: "card mark-" + (u.mark || "none") + (dead ? " dead" : "") + (u.fleeing ? " fleeing" : "") + (u.collapsed ? " collapsed" : "") });
 
     // header
-    const title = el("input", {
-      class: "u-name", value: u.name, placeholder: "Unit name",
-      onchange: (e) => { u.name = e.target.value; save(); },
-    });
+    const caret = el("button", { class: "caret", "aria-label": u.collapsed ? "Expand" : "Collapse", onclick: () => { u.collapsed = !u.collapsed; save(); render(); } }, u.collapsed ? "▸" : "▾");
+    const title = el("input", { class: "u-name", value: u.name, placeholder: "Unit name", onchange: (e) => { u.name = e.target.value; save(); } });
     const markSel = el("select", { class: "mark", onchange: (e) => { u.mark = e.target.value || null; save(); render(); } });
     markSel.append(el("option", { value: "" }, "No mark"));
     for (const k in D.MARKS) markSel.append(el("option", { value: k, selected: u.mark === k ? "selected" : null }, D.MARKS[k].name));
-    card.append(el("div", { class: "u-head" }, [
-      title,
-      markSel,
-      el("button", { class: "icon danger", title: "Remove unit", onclick: () => { if (confirm("Remove " + (u.name || "unit") + "?")) { state.units = state.units.filter((x) => x !== u); save(); render(); } } }, "✕"),
-    ]));
+    const flagBtn = el("button", { class: "icon flag" + (u.fleeing ? " on" : ""), title: "Toggle Fleeing", onclick: () => { u.fleeing = !u.fleeing; save(); render(); } }, "⚑");
+    const delBtn = el("button", { class: "icon danger", title: "Remove unit", onclick: () => { if (confirm("Remove " + (u.name || "unit") + "?")) { state.units = state.units.filter((x) => x !== u); save(); render(); } } }, "✕");
+    card.append(el("div", { class: "u-head" }, [caret, title, markSel, flagBtn, delBtn]));
 
-    // stat line
+    // status badges
+    const badges = [];
+    if (dead) badges.push(el("span", { class: "badge b-dead" }, "Destroyed"));
+    if (u.fleeing && !dead) badges.push(el("span", { class: "badge b-flee" }, "⚑ Fleeing"));
+    if (half && !dead && !u.fleeing) badges.push(el("span", { class: "badge b-half" }, "½ strength"));
+    if (badges.length) card.append(el("div", { class: "badges" }, badges));
+
+    // stat line (always shown)
     const statsRow = el("div", { class: "stats" });
     for (const k of D.STATS) statsRow.append(statCell(k, eff[k], base[k]));
     statsRow.append(statCell("Sv", eff.Sv ? eff.Sv + "+" : "–", base.Sv ? base.Sv + "+" : "", true));
     statsRow.append(statCell("Wd", eff.Ward ? eff.Ward + "+" : "–", base.Ward ? base.Ward + "+" : "", true));
     card.append(statsRow);
 
-    // mount line — shown as the mount's own printed profile; "(+N)" entries are
-    // already folded into the rider's line above (its actual T/W/M).
-    if (u.mountProfile) {
-      const mp = u.mountProfile;
-      const mRow = el("div", { class: "stats mount" });
-      // 9 stat cells aligned under the model's M..Ld
-      for (const k of D.STATS) {
-        const add = typeof mp[k] === "string" && /^\+/.test(mp[k]);
-        mRow.append(el("div", { class: "stat" + (add ? " mountadd" : "") }, [
-          el("div", { class: "stat-l" }, k),
-          el("div", { class: "stat-v mlbl" }, fmtMount(mp[k])),
-        ]));
-      }
-      mRow.append(el("div", { class: "stat ghostcell" })); // under Sv
-      // mount marker sits at the end, under the Ward (Wd) column
-      mRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "Mt"), el("div", { class: "stat-v mlbl" }, "🐎")]));
-      card.append(mRow);
-      if (u.mountNote) card.append(el("div", { class: "mountnote muted small" }, u.mountNote));
-    }
-
-    // champion secondary stat line (when the unit's champion has a different profile)
-    const def = P.matchUnit(u.name);
     const optStr = (u.options || []).join(" ");
     const hasChampion = /champion|headman|headtaker|first sword|jarl|horsemaster/i.test(optStr);
-    if (def && def.champ && (hasChampion || !(u.options || []).length)) {
-      const champ = effective(u, def.champ).eff; // champion gets the same unit buffs, plus its own profile
-      const cRow = el("div", { class: "stats champ" });
-      // only show cells where the champion differs; blanks keep column alignment
-      for (const k of D.STATS) {
-        if (num(champ[k]) !== num(eff[k])) cRow.append(statCell(k, champ[k], eff[k]));
-        else cRow.append(el("div", { class: "stat ghostcell" }));
+
+    if (!u.collapsed) {
+      // mount line — the mount's own printed profile; "(+N)" entries are folded
+      // into the rider's line above (its actual T/W/M).
+      if (u.mountProfile) {
+        const mp = u.mountProfile;
+        const mRow = el("div", { class: "stats mount" });
+        for (const k of D.STATS) {
+          const add = typeof mp[k] === "string" && /^\+/.test(mp[k]);
+          mRow.append(el("div", { class: "stat" + (add ? " mountadd" : "") }, [el("div", { class: "stat-l" }, k), el("div", { class: "stat-v mlbl" }, fmtMount(mp[k]))]));
+        }
+        mRow.append(el("div", { class: "stat ghostcell" }));
+        mRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "Mt"), el("div", { class: "stat-v mlbl" }, "🐎")]));
+        card.append(mRow);
+        if (u.mountNote) card.append(el("div", { class: "mountnote muted small" }, u.mountNote));
       }
-      cRow.append(el("div", { class: "stat ghostcell" })); // under Sv
-      cRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "Ch"), el("div", { class: "stat-v mlbl", title: def.champName || "Champion" }, "★")]));
-      card.append(cRow);
+
+      // champion line — only the characteristics that differ from the unit
+      if (def && def.champ && (hasChampion || !(u.options || []).length)) {
+        const champ = effective(u, def.champ).eff;
+        const cRow = el("div", { class: "stats champ" });
+        for (const k of D.STATS) {
+          if (num(champ[k]) !== num(eff[k])) cRow.append(statCell(k, champ[k], eff[k]));
+          else cRow.append(el("div", { class: "stat ghostcell" }));
+        }
+        cRow.append(el("div", { class: "stat ghostcell" }));
+        cRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "Ch"), el("div", { class: "stat-v mlbl", title: def.champName || "Champion" }, "★")]));
+        card.append(cRow);
+      }
+
+      // command models present
+      const cmd = [];
+      if (/general/i.test(optStr)) cmd.push("👑 General");
+      if (/battle standard bearer/i.test(optStr)) cmd.push("⚑ Battle Standard");
+      if (hasChampion) cmd.push("★ Champion");
+      if (!/battle standard bearer/i.test(optStr) && /standard bearer/i.test(optStr)) cmd.push("⚑ Standard");
+      if (/musician/i.test(optStr)) cmd.push("♪ Musician");
+      if (cmd.length) card.append(el("div", { class: "cmdline" }, cmd.map((c) => el("span", { class: "cmdchip" }, c))));
     }
 
-    // command models present (champion / standard / musician / BSB / general)
-    const cmd = [];
-    if (/general/i.test(optStr)) cmd.push("👑 General");
-    if (/battle standard bearer/i.test(optStr)) cmd.push("⚑ Battle Standard");
-    if (hasChampion) cmd.push("★ Champion");
-    if (!/battle standard bearer/i.test(optStr) && /standard bearer/i.test(optStr)) cmd.push("⚑ Standard");
-    if (/musician/i.test(optStr)) cmd.push("♪ Musician");
-    if (cmd.length) card.append(el("div", { class: "cmdline" }, cmd.map((c) => el("span", { class: "cmdchip" }, c))));
-
-    // casualties / wounds tracker
+    // casualties / wounds tracker (always shown — the core live control)
     const track = el("div", { class: "track" });
     const multiWound = num(base.W) > 1;
     if (!isSingle) {
-      // + restores a model, − removes one (matches the remaining count shown)
-      track.append(stepper("Models", modelsRemaining(u), u.models,
+      track.append(stepper("Models", remModels, u.models,
         () => { if (u.modelsLost > 0) { u.modelsLost--; save(); render(); } },
-        () => { if (u.modelsLost < u.models) { u.modelsLost++; save(); render(); } }));
+        () => { if (u.modelsLost < u.models) { u.modelsLost++; save(); render(); } },
+        (n) => { u.modelsLost = Math.max(0, Math.min(u.models, u.models - n)); save(); render(); }));
     }
     if (isSingle || multiWound) {
-      // + heals a wound, − takes a wound (matches the remaining count shown)
       track.append(stepper(u.mountProfile ? "Wounds*" : "Wounds", wrem, wmax,
         () => { if ((u.woundsLost || 0) > 0) { u.woundsLost--; save(); render(); } },
-        () => { if ((u.woundsLost || 0) < wmax) { u.woundsLost = (u.woundsLost || 0) + 1; save(); render(); } }));
+        () => { if ((u.woundsLost || 0) < wmax) { u.woundsLost = (u.woundsLost || 0) + 1; save(); render(); } },
+        (n) => { u.woundsLost = Math.max(0, Math.min(wmax, wmax - n)); save(); render(); }));
     }
     card.append(track);
 
-    // rules / tags: mount, static special rules, then live mark/reward/effect rules
+    if (u.collapsed) return card; // compact view stops here
+
+    // rules / tags
     const hasTags = rules.length || (u.baseRules || []).length || u.mount;
     if (hasTags) {
       const tags = el("div", { class: "tags" });
@@ -368,6 +387,9 @@
       ]));
     }
     if (chips.children.length) card.append(chips);
+    if ((u.effects || []).length > 1) {
+      card.append(el("button", { class: "dispel", onclick: () => { u.effects = []; save(); render(); } }, "✦ Clear all spells"));
+    }
 
     // action buttons
     const canGaze = !!(def && def.gaze) || /gaze of the gods/i.test((u.baseRules || []).join(" ") + " " + (u.notes || ""));
@@ -394,13 +416,16 @@
     return d;
   }
 
-  function stepper(label, val, max, inc, dec) {
-    return el("div", { class: "stepper" }, [
+  function stepper(label, val, max, inc, dec, setTo) {
+    const valEl = el("div", { class: "step-v" + (setTo ? " tappable" : ""), title: setTo ? "Tap to set exactly" : null,
+      onclick: setTo ? () => { const n = prompt("Set " + label.replace("*", "") + " (0–" + max + "):", String(val)); if (n == null) return; const v = parseInt(n, 10); if (!isNaN(v)) setTo(Math.max(0, Math.min(max, v))); } : null,
+    }, [el("b", {}, String(val)), el("span", { class: "muted" }, "/" + max)]);
+    return el("div", { class: "stepper" + (val <= 0 ? " empty" : "") }, [
       el("div", { class: "step-l" }, label),
       el("div", { class: "step-c" }, [
-        el("button", { class: "round minus", onclick: dec }, "−"),
-        el("div", { class: "step-v" }, [el("b", {}, String(val)), el("span", { class: "muted" }, "/" + max)]),
-        el("button", { class: "round plus", onclick: inc }, "+"),
+        el("button", { class: "round minus", onclick: dec, "aria-label": "decrease " + label }, "−"),
+        valEl,
+        el("button", { class: "round plus", onclick: inc, "aria-label": "increase " + label }, "+"),
       ]),
     ]);
   }
@@ -637,6 +662,18 @@
     }
 
     body.append(el("label", { class: "full" }, ["Options / equipment", el("textarea", { rows: 3, onchange: (e) => { u.options = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean); save(); } }, u.options.join("\n"))]));
+    body.append(el("label", { class: "full" }, ["Notes", el("textarea", { rows: 2, placeholder: "Your own battle notes…", onchange: (e) => { u.notes = e.target.value; save(); } }, u.notes || "")]));
+
+    body.append(el("h4", {}, "Manage"));
+    body.append(el("div", { class: "managerow" }, [
+      el("button", { onclick: () => { const i = state.units.indexOf(u); if (i > 0) { state.units.splice(i, 1); state.units.splice(i - 1, 0, u); save(); render(); } } }, "↑ Move up"),
+      el("button", { onclick: () => { const i = state.units.indexOf(u); if (i > -1 && i < state.units.length - 1) { state.units.splice(i, 1); state.units.splice(i + 1, 0, u); save(); render(); } } }, "↓ Move down"),
+      el("button", { onclick: () => {
+        const copy = clone(u); copy.id = P.newUnit().id;
+        copy.modelsLost = 0; copy.woundsLost = 0; copy.mountWoundsLost = 0; copy.rewards = []; copy.effects = []; copy.fleeing = false;
+        const i = state.units.indexOf(u); state.units.splice(i + 1, 0, copy); save(); closeModal(); render();
+      } }, "⧉ Duplicate"),
+    ]));
     openModal("Edit — " + (u.name || "unit"), body, [el("button", { onclick: () => { closeModal(); render(); } }, "Done")]);
   }
 
@@ -761,6 +798,71 @@
     setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 1800);
   }
 
+  // Reset combat state for the current army (keep roster, marks and magic items).
+  function newBattle() {
+    if (!confirm("Start a new battle for “" + (state.meta.name || "this army") + "”?\nClears wounds, casualties, Gaze rewards and spells (keeps the roster, marks & items).")) return;
+    for (const u of state.units) {
+      u.modelsLost = 0; u.woundsLost = 0; u.mountWoundsLost = 0;
+      u.rewards = []; u.effects = []; u.fleeing = false;
+    }
+    state.turn = 1;
+    save(); render();
+    flash("New battle — combat state cleared.");
+  }
+
+  function collapseAll() {
+    const anyOpen = state.units.some((u) => !u.collapsed);
+    for (const u of state.units) u.collapsed = anyOpen;
+    save(); render();
+  }
+
+  // Download the whole database (all armies) as a JSON backup file.
+  function backup() {
+    try {
+      const data = JSON.stringify(DB, null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = $("#dlAnchor");
+      const d = new Date();
+      const stamp = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      a.href = url; a.download = "chaostracker-backup-" + stamp + ".json";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      flash("Backup downloaded (" + DB.armies.length + " army/ies).");
+    } catch (e) { alert("Backup failed: " + e.message); }
+  }
+
+  // Restore armies from a backup file, merged in (existing armies are kept).
+  function restoreFromObject(obj) {
+    let armies = [];
+    if (obj && Array.isArray(obj.armies)) armies = obj.armies;
+    else if (obj && (obj.units || obj.meta)) armies = [{ meta: obj.meta || { name: "Imported", points: "" }, units: obj.units || [], turn: obj.turn || 1 }];
+    if (!armies.length) { alert("No armies found in that file."); return; }
+    for (const a of armies) {
+      a.id = newId();
+      if (!a.meta) a.meta = { name: "Imported army", points: "" };
+      if (!a.units) a.units = [];
+      if (!a.turn) a.turn = 1;
+      for (const u of a.units) if (!u.items) u.items = P.linkItems(u.options || []);
+    }
+    DB.armies = DB.armies.concat(armies);
+    DB.activeId = armies[0].id; state = activeArmy();
+    save(); render();
+    flash("Restored " + armies.length + " army/ies.");
+  }
+  function restore() {
+    const inp = $("#restoreFile");
+    inp.value = "";
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => { try { restoreFromObject(JSON.parse(String(reader.result))); } catch (e) { alert("Couldn't read that file: " + e.message); } };
+      reader.readAsText(f);
+    };
+    inp.click();
+  }
+
   // ---- wire up -------------------------------------------------------------
   function init() {
     $("#btnImport").addEventListener("click", importModal);
@@ -794,6 +896,10 @@
       state.meta.name = name.trim() || state.meta.name;
       save(); render();
     });
+    $("#btnNewBattle").addEventListener("click", newBattle);
+    $("#btnCollapseAll").addEventListener("click", collapseAll);
+    $("#btnBackup").addEventListener("click", backup);
+    $("#btnRestore").addEventListener("click", restore);
     // menu open/close
     const menuPanel = $("#menuPanel");
     const toggleMenu = (open) => { if (!menuPanel) return; const show = open == null ? menuPanel.hasAttribute("hidden") : open; if (show) menuPanel.removeAttribute("hidden"); else menuPanel.setAttribute("hidden", ""); };

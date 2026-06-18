@@ -37,11 +37,18 @@
           <button id="btnRenameArmy">✎ Rename army</button>
           <button id="btnDelArmy" class="danger">🗑 Delete army</button>
           <div class="menu-sep"></div>
+          <button id="btnCollapseAll">↕ Collapse / expand all</button>
+          <button id="btnNewBattle">⚔ New battle (reset)</button>
           <button id="btnReset" class="danger">♻ Clear units</button>
+          <div class="menu-sep"></div>
+          <button id="btnBackup">⬇ Backup to file</button>
+          <button id="btnRestore">⬆ Restore from file</button>
         </div>
       </div>
     </div>
   </header>
+  <input id="restoreFile" type="file" accept=".json,application/json" hidden />
+  <a id="dlAnchor" hidden></a>
 
   <main id="roster" class="roster"></main>
 

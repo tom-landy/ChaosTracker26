@@ -319,3 +319,34 @@ textarea.import { width: 100%; }
 .toast { position: fixed; left: 50%; bottom: calc(26px + var(--safe-b)); transform: translate(-50%, 20px); background: linear-gradient(180deg, #321a2a, #241320); border: 1px solid var(--gaze); color: var(--ink); padding: 11px 18px; border-radius: 24px; opacity: 0; transition: all 0.25s; z-index: 90; box-shadow: 0 8px 28px rgba(0,0,0,0.55); }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 code { background: #160b12; padding: 1px 5px; border-radius: 4px; font-size: 12px; color: var(--brass); }
+
+/* ---- v19 quality-of-life additions ---- */
+.summary { text-align: center; padding: 2px 0 2px; letter-spacing: 0.02em; }
+
+/* collapse caret + header tweaks */
+.caret { background: transparent; border: none; box-shadow: none; color: var(--brass); font-size: 14px; padding: 4px 4px; flex: none; width: 26px; }
+.u-head { gap: 6px; }
+button.icon.flag { color: var(--muted); }
+button.icon.flag.on { color: var(--gaze); }
+.card.fleeing { opacity: 0.9; }
+.card.fleeing .u-name { font-style: italic; }
+.card.collapsed { padding-bottom: 11px; }
+
+/* status badges */
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.badge { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; border: 1px solid; }
+.badge.b-dead { color: #fff; background: rgba(216,83,79,0.22); border-color: var(--danger); }
+.badge.b-flee { color: var(--gaze); border-color: #6a3c12; background: rgba(232,134,42,0.12); }
+.badge.b-half { color: #e6c46a; border-color: #6a5520; background: rgba(205,162,63,0.12); }
+
+/* tap-to-set + empty tracker */
+.step-v.tappable { cursor: pointer; border-bottom: 1px dotted var(--line2); }
+.step-v.tappable:active { color: var(--gaze); }
+.stepper.empty { border-color: #5a2222; }
+.stepper.empty .step-v b { color: var(--danger); }
+
+/* dispel + manage controls */
+.dispel { margin: 8px 0 2px; width: 100%; background: transparent; border: 1px dashed var(--line2); color: var(--muted); font-size: 13px; padding: 8px; }
+.dispel:hover { border-color: var(--hex); color: var(--hex); }
+.managerow { display: flex; gap: 8px; margin: 6px 0; }
+.managerow button { flex: 1; }
