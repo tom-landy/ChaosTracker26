@@ -15,7 +15,8 @@
   const ITEMS_VERSION = 1; // bump to re-link items/traits from wargear on saved armies
 
   // ---- state ---------------------------------------------------------------
-  let state = load() || { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION, itemsVersion: ITEMS_VERSION };
+  let state = load() || { meta: { name: "My Army", points: "" }, units: [], turn: 1, gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION, itemsVersion: ITEMS_VERSION };
+  if (!state.turn) state.turn = 1;
   // Migrate older saves to the corrected Gaze of the Gods table, persisting once.
   if (!state.gaze || state.gazeVersion !== GAZE_VERSION) {
     state.gaze = clone(D.GAZE_REWARDS);
@@ -167,6 +168,8 @@
   function render() {
     $("#armyName").value = state.meta.name || "";
     $("#armyPoints").textContent = state.meta.points ? state.meta.points + " pts" : "";
+    const tb = $("#turnNum"); if (tb) tb.textContent = state.turn || 1;
+    const pv = $("#btnPrevTurn"); if (pv) pv.disabled = (state.turn || 1) <= 1;
     const root = $("#roster");
     root.innerHTML = "";
     if (!state.units.length) {
@@ -393,7 +396,7 @@
   function gazeModal(u) {
     const body = el("div", {});
     const last = el("div", { class: "rollout" });
-    body.append(el("p", { class: "muted small", html: "Roll a <b>D6</b> in your <b>Command sub-phase</b> — the result affects the character, not their mount. Results 2 &amp; 3 last until your next turn (cleared by <b>End of turn</b>); the rest last the battle. Values are <b>editable</b> via <b>Edit table</b>." }));
+    body.append(el("p", { class: "muted small", html: "Roll a <b>D6</b> in your <b>Command sub-phase</b> — the result affects the character, not their mount. Results 2 &amp; 3 last until your next turn (cleared by <b>Next ▶</b>); the rest last the battle. Values are <b>editable</b> via <b>Edit table</b>." }));
     body.append(el("div", { class: "rollrow" }, [
       el("button", { class: "big roll", onclick: () => {
         const roll = 1 + Math.floor(Math.random() * 6);
@@ -680,15 +683,19 @@
     save(); render();
     editModal(u);
   }
-  function clearTurnEffects() {
+  // Advance to the next turn: remove non-permanent additions (spells that last
+  // "until your next turn" or "until end of turn"). Lasting Gaze rewards, items,
+  // "remains in play" spells and permanent effects are kept.
+  function nextTurn() {
     let n = 0;
     for (const u of state.units) {
       const before = (u.effects || []).length;
       u.effects = (u.effects || []).filter((e) => !/next turn|end of turn/i.test(e.duration || ""));
       n += before - u.effects.length;
     }
+    state.turn = (state.turn || 1) + 1;
     save(); render();
-    flash(n ? `Cleared ${n} short-lived effect(s).` : "No short-lived effects to clear.");
+    flash("Turn " + state.turn + (n ? " — cleared " + n + " temporary effect(s)" : ""));
   }
   function flash(msg) {
     const t = el("div", { class: "toast" }, msg);
@@ -701,10 +708,11 @@
   function init() {
     $("#btnImport").addEventListener("click", importModal);
     $("#btnAdd").addEventListener("click", addUnit);
-    $("#btnEndTurn").addEventListener("click", clearTurnEffects);
+    $("#btnNextTurn").addEventListener("click", nextTurn);
+    $("#btnPrevTurn").addEventListener("click", () => { if ((state.turn || 1) > 1) { state.turn--; save(); render(); flash("Turn " + state.turn); } });
     $("#btnReset").addEventListener("click", () => {
       if (confirm("Clear the whole army? This can't be undone.")) {
-        state = { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION, itemsVersion: ITEMS_VERSION };
+        state = { meta: { name: "My Army", points: "" }, units: [], turn: 1, gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION, itemsVersion: ITEMS_VERSION };
         save(); render();
       }
     });

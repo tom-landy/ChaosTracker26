@@ -92,7 +92,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--gaze); outl
 }
 .armyname:focus { outline: none; border-bottom: 1px dashed var(--gaze); }
 .points { color: var(--brass); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.turnbox { display: flex; align-items: center; gap: 6px; background: #170c13; border: 1px solid var(--line); border-radius: 11px; padding: 3px 5px; }
+.turnlabel { font-size: 13px; color: var(--muted); padding: 0 2px; white-space: nowrap; }
+.turnlabel b { color: var(--brass); font-size: 15px; }
+.turnstep { padding: 6px 10px; font-size: 16px; line-height: 1; background: var(--card2); }
+.turnstep:disabled { opacity: 0.35; }
+#btnNextTurn { padding: 8px 12px; }
 .actions button { padding: 9px 12px; font-size: 14px; }
 
 /* roster */

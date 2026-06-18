@@ -26,7 +26,11 @@
     <div class="actions">
       <button id="btnImport" class="primary">Import list</button>
       <button id="btnAdd">Add unit</button>
-      <button id="btnEndTurn" title="Clear spells that last until your next turn">End of turn</button>
+      <div class="turnbox" title="Advance the turn — clears spells that last until your next turn / end of turn">
+        <button id="btnPrevTurn" class="turnstep" title="Previous turn">−</button>
+        <span class="turnlabel">Turn <b id="turnNum">1</b></span>
+        <button id="btnNextTurn" class="primary" title="Next turn (clear temporary effects)">Next ▶</button>
+      </div>
       <button id="btnReset" class="ghost danger" title="Clear everything">Reset</button>
     </div>
   </header>
