@@ -178,7 +178,11 @@ button.icon.danger { color: var(--danger); }
 .stats.mount .stat.mountadd { border-style: solid; border-color: var(--brass-d); background: rgba(205,162,63,0.1); }
 .stats.mount .stat.mountadd .stat-v { color: var(--brass); }
 .stat.ghostcell { background: transparent; border: none; }
+.stats.champ { margin-top: 4px; }
+.stats.champ .stat { background: #150b12; opacity: 0.97; padding: 4px 2px; }
 .mountnote { margin: 2px 2px 0; color: var(--brass); opacity: 0.8; }
+.cmdline { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 2px; }
+.cmdchip { font-size: 11.5px; padding: 3px 9px; border-radius: 7px; background: #170c13; border: 1px solid var(--line); color: var(--brass); }
 .unitnote { margin: 6px 2px 0; font-style: italic; }
 
 /* trackers */

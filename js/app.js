@@ -82,8 +82,9 @@
 
   // Sum numeric mods from mark + rewards + effects onto the (mount-folded) base.
   // Non-numeric characteristics (e.g. "D3", "2D6+1") are passed through untouched.
-  function effective(unit) {
-    const base = foldMount(unit.profile, unit.mountProfile);
+  function effective(unit, baseOverride) {
+    const prof = baseOverride ? Object.assign({}, unit.profile, baseOverride) : unit.profile;
+    const base = foldMount(prof, unit.mountProfile);
     const eff = {};
     for (const k of D.STATS) {
       const n = parseInt(base[k], 10);
@@ -113,7 +114,14 @@
     }
     for (const iid of unit.items || []) {
       const it = findItem(iid);
-      if (it) applyMods(it.mods, it.rules, "item");
+      if (!it) continue;
+      if (it.id === "trait-unnatural-fortitude" || it.id === "trait-longstriders") {
+        // only applies if the model isn't wearing heavy or full plate armour
+        const heavy = /heavy armour|full plate/i.test((unit.options || []).join(" "));
+        applyMods(heavy ? {} : it.mods, it.rules, "item");
+      } else {
+        applyMods(it.mods, it.rules, "item");
+      }
     }
     for (const ef of unit.effects || []) {
       applyMods(ef.mods, ef.rules, ef.kind === "hex" ? "hex" : "aug");
@@ -263,6 +271,29 @@
       if (u.mountNote) card.append(el("div", { class: "mountnote muted small" }, u.mountNote));
     }
 
+    // champion secondary stat line (when the unit's champion has a different profile)
+    const def = P.matchUnit(u.name);
+    const optStr = (u.options || []).join(" ");
+    const hasChampion = /champion|headman|headtaker|first sword|jarl|horsemaster/i.test(optStr);
+    if (def && def.champ && (hasChampion || !(u.options || []).length)) {
+      const champ = effective(u, def.champ).eff; // champion gets the same unit buffs, plus its own profile
+      const cRow = el("div", { class: "stats champ" });
+      for (const k of D.STATS) cRow.append(statCell(k, champ[k], eff[k]));
+      cRow.append(el("div", { class: "stat ghostcell" })); // under Sv
+      cRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "Ch"), el("div", { class: "stat-v mlbl" }, "★")]));
+      card.append(cRow);
+      if (def.champName) card.append(el("div", { class: "mountnote muted small" }, def.champName + " (champion)"));
+    }
+
+    // command models present (champion / standard / musician / BSB / general)
+    const cmd = [];
+    if (/general/i.test(optStr)) cmd.push("👑 General");
+    if (/battle standard bearer/i.test(optStr)) cmd.push("⚑ Battle Standard");
+    if (hasChampion) cmd.push("★ Champion");
+    if (!/battle standard bearer/i.test(optStr) && /standard bearer/i.test(optStr)) cmd.push("⚑ Standard");
+    if (/musician/i.test(optStr)) cmd.push("♪ Musician");
+    if (cmd.length) card.append(el("div", { class: "cmdline" }, cmd.map((c) => el("span", { class: "cmdchip" }, c))));
+
     // casualties / wounds tracker
     const track = el("div", { class: "track" });
     const multiWound = num(base.W) > 1;
@@ -325,7 +356,6 @@
     if (chips.children.length) card.append(chips);
 
     // action buttons
-    const def = P.matchUnit(u.name);
     const canGaze = !!(def && def.gaze) || /gaze of the gods/i.test((u.baseRules || []).join(" ") + " " + (u.notes || ""));
     card.append(el("div", { class: "u-actions" }, [
       canGaze ? el("button", { class: "act gaze", onclick: () => gazeModal(u) }, "👁 Gaze") : null,
