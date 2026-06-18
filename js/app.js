@@ -791,6 +791,11 @@
     });
     $("#armyName").addEventListener("change", (e) => { state.meta.name = e.target.value; save(); render(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+    // Condense the sticky header once the page is scrolled.
+    const topbar = $(".topbar");
+    const onScroll = () => { if (topbar) topbar.classList.toggle("compact", window.scrollY > 6); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
     render();
 
     if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
