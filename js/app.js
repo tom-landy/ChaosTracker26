@@ -14,50 +14,50 @@
   const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
   const ITEMS_VERSION = 1; // bump to re-link items/traits from wargear on saved armies
 
-  // ---- state ---------------------------------------------------------------
-  let state = load() || { meta: { name: "My Army", points: "" }, units: [], turn: 1, gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION, itemsVersion: ITEMS_VERSION };
-  if (!state.turn) state.turn = 1;
-  // Migrate older saves to the corrected Gaze of the Gods table, persisting once.
-  if (!state.gaze || state.gazeVersion !== GAZE_VERSION) {
-    state.gaze = clone(D.GAZE_REWARDS);
-    state.gazeVersion = GAZE_VERSION;
-    save();
-  }
-  // Re-apply canonical unit profiles to matched units after a stat-data fix.
-  if (state.unitVersion !== UNIT_VERSION) {
-    for (const u of state.units || []) {
-      const def = P.matchUnit(u.name);
-      if (def) {
-        u.profile = clone(def.profile);
-        u.isChar = !!def.isChar;
-        u.notes = def.note || "";
-      }
+  function clone(x) { return JSON.parse(JSON.stringify(x)); }
+  function rawLoad() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; } }
+  function newId() { return "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function newArmy(name) { return { id: newId(), meta: { name: name || "My Army", points: "" }, units: [], turn: 1 }; }
+
+  // ---- state: a database of armies (all client-side in localStorage) --------
+  let DB = (function migrate(raw) {
+    if (raw && raw.schema === 2 && Array.isArray(raw.armies) && raw.armies.length) return raw;
+    if (raw && (raw.units || raw.meta)) { // old single-army save -> wrap as army #1
+      const a = { id: newId(), meta: raw.meta || { name: "My Army", points: "" }, units: raw.units || [], turn: raw.turn || 1 };
+      return { schema: 2, activeId: a.id, armies: [a], gaze: raw.gaze, gazeVersion: raw.gazeVersion, mountVersion: raw.mountVersion, unitVersion: raw.unitVersion, itemsVersion: raw.itemsVersion };
     }
-    state.unitVersion = UNIT_VERSION;
-    save();
+    const a = newArmy("My Army");
+    return { schema: 2, activeId: a.id, armies: [a] };
+  })(rawLoad());
+
+  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); } catch (e) {} }
+  function activeArmy() { return DB.armies.find((a) => a.id === DB.activeId) || DB.armies[0]; }
+  let state = activeArmy(); // the army currently being viewed/edited
+
+  // Normalise every army, then run shared/data migrations across all of them.
+  for (const a of DB.armies) { if (!a.id) a.id = newId(); if (!a.meta) a.meta = { name: "My Army", points: "" }; if (!a.units) a.units = []; if (!a.turn) a.turn = 1; }
+  if (!DB.activeId || !activeArmy()) DB.activeId = DB.armies[0].id;
+  if (!DB.gaze || DB.gazeVersion !== GAZE_VERSION) { DB.gaze = clone(D.GAZE_REWARDS); DB.gazeVersion = GAZE_VERSION; save(); }
+  if (DB.unitVersion !== UNIT_VERSION) {
+    for (const a of DB.armies) for (const u of a.units) {
+      const def = P.matchUnit(u.name);
+      if (def) { u.profile = clone(def.profile); u.isChar = !!def.isChar; u.notes = def.note || ""; }
+    }
+    DB.unitVersion = UNIT_VERSION; save();
   }
-  // Re-apply canonical mount profiles to existing units after a mount-data fix.
-  if (state.mountVersion !== MOUNT_VERSION) {
-    for (const u of state.units || []) {
+  if (DB.mountVersion !== MOUNT_VERSION) {
+    for (const a of DB.armies) for (const u of a.units) {
       if (!u.mount) continue;
       const mdef = D.MOUNT_INDEX[D.norm(u.mount)] || D.MOUNT_INDEX[D.norm(u.mount).replace(/s$/, "")];
       if (mdef) { u.mountProfile = clone(mdef.profile); u.mountNote = mdef.note || null; }
     }
-    state.mountVersion = MOUNT_VERSION;
-    save();
+    DB.mountVersion = MOUNT_VERSION; save();
   }
-  // Auto-link gifts/items/traits from each unit's imported wargear.
-  if (state.itemsVersion !== ITEMS_VERSION) {
-    for (const u of state.units || []) {
-      if (!u.items || !u.items.length) u.items = P.linkItems(u.options || []);
-    }
-    state.itemsVersion = ITEMS_VERSION;
-    save();
+  if (DB.itemsVersion !== ITEMS_VERSION) {
+    for (const a of DB.armies) for (const u of a.units) { if (!u.items || !u.items.length) u.items = P.linkItems(u.options || []); }
+    DB.itemsVersion = ITEMS_VERSION; save();
   }
-
-  function clone(x) { return JSON.parse(JSON.stringify(x)); }
-  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
-  function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; } }
+  state = activeArmy();
 
   // ---- derived stats -------------------------------------------------------
   // A mount value of "+N" is added to the rider; a plain number is the mount's
@@ -142,7 +142,7 @@
   function num(v) { const n = parseInt(v, 10); return isNaN(n) ? "" : n; }
   function findReward(rid) {
     if (typeof rid === "object") return rid; // inline custom reward
-    return state.gaze.find((r) => r.id === rid);
+    return DB.gaze.find((r) => r.id === rid);
   }
   function findItem(iid) {
     if (typeof iid === "object") return iid; // inline custom item
@@ -182,6 +182,12 @@
     $("#armyPoints").textContent = state.meta.points ? state.meta.points + " pts" : "";
     const tb = $("#turnNum"); if (tb) tb.textContent = state.turn || 1;
     const pv = $("#btnPrevTurn"); if (pv) pv.disabled = (state.turn || 1) <= 1;
+    const sel = $("#armySel");
+    if (sel) {
+      sel.innerHTML = "";
+      for (const a of DB.armies) sel.append(el("option", { value: a.id, selected: a.id === DB.activeId ? "selected" : null }, (a.meta && a.meta.name) || "(unnamed)"));
+    }
+    const del = $("#btnDelArmy"); if (del) del.disabled = DB.armies.length <= 1;
     const root = $("#roster");
     root.innerHTML = "";
     if (!state.units.length) {
@@ -437,7 +443,7 @@
     body.append(el("div", { class: "rollrow" }, [
       el("button", { class: "big roll", onclick: () => {
         const roll = 1 + Math.floor(Math.random() * 6);
-        const r = state.gaze.find((x) => rollMatches(x.roll, roll)) || state.gaze[Math.min(state.gaze.length - 1, roll - 1)];
+        const r = DB.gaze.find((x) => rollMatches(x.roll, roll)) || DB.gaze[Math.min(DB.gaze.length - 1, roll - 1)];
         last.innerHTML = "";
         last.append(el("div", { class: "rolled" }, [el("b", {}, "D6 = " + roll + " → "), r ? r.name : "—"]));
         if (r) applyReward(u, r);
@@ -445,7 +451,7 @@
       last,
     ]));
     const list = el("div", { class: "picklist" });
-    for (const r of state.gaze) {
+    for (const r of DB.gaze) {
       list.append(el("button", { class: "pick" + (r.bad ? " bad" : ""), onclick: () => { applyReward(u, r); closeModal(); } }, [
         el("b", {}, r.roll + "  " + r.name + (r.temp ? " ⏳" : "")),
         el("span", { class: "muted small" }, describeMods(r) + (r.temp ? " · this turn" : "")),
@@ -641,7 +647,7 @@
     const body = el("div", {});
     body.append(el("p", { class: "muted small" }, "Edit each result's name and mods (e.g. 'S+1, A+1, ward5'). The roll column accepts numbers or ranges (e.g. 3-4, 6+)."));
     const list = el("div", {});
-    for (const r of state.gaze) {
+    for (const r of DB.gaze) {
       const row = el("div", { class: "gazeedit" }, [
         el("input", { class: "roll", value: r.roll, onchange: (e) => { r.roll = e.target.value; save(); } }),
         el("input", { class: "rname", value: r.name, onchange: (e) => { r.name = e.target.value; save(); } }),
@@ -651,7 +657,7 @@
     }
     body.append(list);
     const foot = [
-      el("button", { class: "ghost danger", onclick: () => { if (confirm("Reset Gaze table to defaults?")) { state.gaze = clone(D.GAZE_REWARDS); save(); editGazeTable(); } } }, "Reset defaults"),
+      el("button", { class: "ghost danger", onclick: () => { if (confirm("Reset Gaze table to defaults?")) { DB.gaze = clone(D.GAZE_REWARDS); save(); editGazeTable(); } } }, "Reset defaults"),
       el("button", { onclick: closeModal }, "Done"),
     ];
     openModal("Edit Gaze of the Gods table", body, foot);
@@ -700,12 +706,19 @@
     body.append(ta);
     body.append(preview);
     const foot = [
-      el("label", { class: "chk" }, [el("input", { type: "checkbox", id: "imp-replace", checked: "checked" }), "Replace current army"]),
+      el("label", { class: "chk" }, [el("input", { type: "checkbox", id: "imp-newarmy", checked: "checked" }), "Import as a new army"]),
       el("button", { class: "primary", onclick: () => {
         const r = P.parse(ta.value);
         if (!r.units.length) { alert("Couldn't find any units in that text."); return; }
-        if ($("#imp-replace").checked) state.units = r.units; else state.units = state.units.concat(r.units);
-        if (r.meta.name) state.meta = r.meta;
+        if ($("#imp-newarmy").checked) {
+          const a = newArmy((r.meta && r.meta.name) || "Imported army");
+          a.meta = { name: (r.meta && r.meta.name) || "Imported army", points: (r.meta && r.meta.points) || "" };
+          a.units = r.units;
+          DB.armies.push(a); DB.activeId = a.id; state = activeArmy();
+        } else {
+          state.units = r.units;
+          if (r.meta && r.meta.name) state.meta = r.meta;
+        }
         save(); render(); closeModal();
       } }, "Import"),
     ];
@@ -748,12 +761,27 @@
     $("#btnNextTurn").addEventListener("click", nextTurn);
     $("#btnPrevTurn").addEventListener("click", () => { if ((state.turn || 1) > 1) { state.turn--; save(); render(); flash("Turn " + state.turn); } });
     $("#btnReset").addEventListener("click", () => {
-      if (confirm("Clear the whole army? This can't be undone.")) {
-        state = { meta: { name: "My Army", points: "" }, units: [], turn: 1, gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION, itemsVersion: ITEMS_VERSION };
-        save(); render();
+      if (confirm("Clear all units from “" + (state.meta.name || "this army") + "”? This can't be undone.")) {
+        state.units = []; state.turn = 1; save(); render();
       }
     });
-    $("#armyName").addEventListener("change", (e) => { state.meta.name = e.target.value; save(); });
+    // army management
+    $("#armySel").addEventListener("change", (e) => { DB.activeId = e.target.value; state = activeArmy(); save(); render(); });
+    $("#btnNewArmy").addEventListener("click", () => {
+      const name = (prompt("Name this army:", "New Army") || "").trim();
+      if (name === null) return;
+      const a = newArmy(name || "New Army");
+      DB.armies.push(a); DB.activeId = a.id; state = activeArmy();
+      save(); render();
+    });
+    $("#btnDelArmy").addEventListener("click", () => {
+      if (DB.armies.length <= 1) { flash("You need at least one army."); return; }
+      if (!confirm("Delete army “" + (state.meta.name || "this army") + "” and all its units?")) return;
+      DB.armies = DB.armies.filter((a) => a.id !== DB.activeId);
+      DB.activeId = DB.armies[0].id; state = activeArmy();
+      save(); render();
+    });
+    $("#armyName").addEventListener("change", (e) => { state.meta.name = e.target.value; save(); render(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
     render();
 

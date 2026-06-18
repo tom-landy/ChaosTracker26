@@ -84,6 +84,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--gaze); outl
 .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .brand img { border-radius: 7px; flex: none; box-shadow: 0 0 0 1px var(--brass-d), 0 0 14px rgba(232,134,42,0.35); }
 .brandtext { display: flex; flex-direction: column; min-width: 0; }
+.armyrow { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.armysel { font-size: 12px; max-width: 46vw; padding: 4px 6px; background: #170c13; color: var(--brass); border-color: var(--line); border-radius: 8px; }
+.iconbtn { padding: 4px 9px; font-size: 14px; line-height: 1; background: var(--card2); }
+.iconbtn.danger { color: var(--danger); border-color: #5a2222; }
+.iconbtn:disabled { opacity: 0.35; }
 .armyname {
   background: transparent; border: none; padding: 2px 0; font-size: 20px; font-weight: 700; color: var(--ink);
   max-width: 52vw; letter-spacing: 0.01em;
