@@ -12,9 +12,10 @@
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
+  const ITEMS_VERSION = 1; // bump to re-link items/traits from wargear on saved armies
 
   // ---- state ---------------------------------------------------------------
-  let state = load() || { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION };
+  let state = load() || { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION, itemsVersion: ITEMS_VERSION };
   // Migrate older saves to the corrected Gaze of the Gods table, persisting once.
   if (!state.gaze || state.gazeVersion !== GAZE_VERSION) {
     state.gaze = clone(D.GAZE_REWARDS);
@@ -42,6 +43,14 @@
       if (mdef) { u.mountProfile = clone(mdef.profile); u.mountNote = mdef.note || null; }
     }
     state.mountVersion = MOUNT_VERSION;
+    save();
+  }
+  // Auto-link gifts/items/traits from each unit's imported wargear.
+  if (state.itemsVersion !== ITEMS_VERSION) {
+    for (const u of state.units || []) {
+      if (!u.items || !u.items.length) u.items = P.linkItems(u.options || []);
+    }
+    state.itemsVersion = ITEMS_VERSION;
     save();
   }
 
@@ -101,6 +110,10 @@
       const r = findReward(rid);
       if (r) applyMods(r.mods, r.rules, "gaze");
     }
+    for (const iid of unit.items || []) {
+      const it = findItem(iid);
+      if (it) applyMods(it.mods, it.rules, "item");
+    }
     for (const ef of unit.effects || []) {
       applyMods(ef.mods, ef.rules, ef.kind === "hex" ? "hex" : "aug");
     }
@@ -121,6 +134,10 @@
   function findReward(rid) {
     if (typeof rid === "object") return rid; // inline custom reward
     return state.gaze.find((r) => r.id === rid);
+  }
+  function findItem(iid) {
+    if (typeof iid === "object") return iid; // inline custom item
+    return D.ITEMS.find((i) => i.id === iid);
   }
 
   function modelsRemaining(u) { return Math.max(0, (u.models || 0) - (u.modelsLost || 0)); }
@@ -272,8 +289,16 @@
     }
     if (u.notes) card.append(el("div", { class: "unitnote muted small" }, u.notes));
 
-    // active rewards & effects (with remove)
+    // active rewards, items & effects (with remove)
     const chips = el("div", { class: "active" });
+    for (const iid of u.items || []) {
+      const it = findItem(iid);
+      if (!it) continue;
+      chips.append(el("span", { class: "achip item", title: (it.rules || []).join("; ") }, [
+        "⚜ " + it.name,
+        el("button", { class: "x", onclick: () => { u.items = u.items.filter((x) => x !== iid); save(); render(); } }, "×"),
+      ]));
+    }
     for (const rid of u.rewards || []) {
       const r = findReward(rid);
       if (!r) continue;
@@ -296,6 +321,7 @@
     card.append(el("div", { class: "u-actions" }, [
       el("button", { class: "act gaze", onclick: () => gazeModal(u) }, "👁 Gaze"),
       el("button", { class: "act spell", onclick: () => effectModal(u) }, "✦ Spell"),
+      el("button", { class: "act item", onclick: () => itemsModal(u) }, "⚜ Items"),
       el("button", { class: "act", onclick: () => editModal(u) }, "✎ Edit"),
     ]));
     if (u.options && u.options.length) {
@@ -391,6 +417,28 @@
       el("button", { onclick: closeModal }, "Done"),
     ];
     openModal("Gaze of the Gods — " + (u.name || "unit"), body, foot);
+  }
+
+  function itemsModal(u) {
+    const body = el("div", {});
+    body.append(el("p", { class: "muted small", html: "Gifts, magic items &amp; chaotic traits. Tap to add to this model — stat effects apply live; others show as a reminder tag. Tap an active item's × on the card to remove." }));
+    for (const [cat, label] of D.ITEM_CATEGORIES) {
+      const list = el("div", { class: "picklist" });
+      for (const it of D.ITEMS.filter((x) => x.cat === cat)) {
+        const has = (u.items || []).indexOf(it.id) !== -1;
+        list.append(el("button", { class: "pick item" + (has ? " on" : ""), onclick: () => {
+          u.items = u.items || [];
+          if (has) u.items = u.items.filter((x) => x !== it.id); else u.items.push(it.id);
+          save(); render(); itemsModal(u);
+        } }, [
+          el("b", {}, (has ? "✓ " : "") + it.name),
+          el("span", { class: "muted small" }, describeMods(it)),
+        ]));
+      }
+      body.append(el("h4", {}, label));
+      body.append(list);
+    }
+    openModal("Items & traits — " + (u.name || "unit"), body, [el("button", { onclick: closeModal }, "Done")]);
   }
 
   function describeMods(r) {
@@ -656,7 +704,7 @@
     $("#btnEndTurn").addEventListener("click", clearTurnEffects);
     $("#btnReset").addEventListener("click", () => {
       if (confirm("Clear the whole army? This can't be undone.")) {
-        state = { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION };
+        state = { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION, itemsVersion: ITEMS_VERSION };
         save(); render();
       }
     });

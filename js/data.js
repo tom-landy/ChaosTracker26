@@ -162,7 +162,11 @@
     "illusion": "Illusion",
     "necromancy": "Necromancy",
     "high-magic": "High Magic",
-    "nurgle": "Mark of Nurgle",
+    "undivided": "Mark: Undivided",
+    "khorne": "Mark: Khorne",
+    "nurgle": "Mark: Nurgle",
+    "slaanesh": "Mark: Slaanesh",
+    "tzeentch": "Mark: Tzeentch",
   };
   const LORES = {
     daemonology: [
@@ -181,16 +185,118 @@
       { id: "dae-6", name: "Daemonic Vigour", type: "Enchantment", cv: "9+", range: '15"', kind: "augment",
         mods: { M: 1, T: 1, I: 1 }, rules: [], duration: "Until end of turn" },
     ],
-    // Signature spell available to Mark of Nurgle wizards (any lore).
+    shadowlands: [
+      { id: "shd-sig", name: "Maelstrom of Chaos", type: "Magic Missile", cv: "7+", range: '15"', kind: "damage", instant: true,
+        mods: {}, rules: ['3" template over target, scatters D3+1"; models under it take a single S4 hit, AP -3'] },
+      { id: "shd-1", name: "Blackened Bolts", type: "Magic Missile", cv: "8+", range: '18"', kind: "damage", instant: true,
+        mods: {}, rules: ["2D6 hits at S3, AP -1; any unsaved wound forces a Panic test (as heavy casualties)"] },
+      { id: "shd-2", name: "Veil of Gloom", type: "Enchantment", cv: "9+", range: '15"', kind: "augment",
+        mods: {}, rules: ["Friendly unit: 4+ ward vs template wounds, 5+ ward vs Shooting wounds"], duration: "Until start of your next turn" },
+      { id: "shd-3", name: "Vortex of Darkness", type: "Magical Vortex", cv: "10+", range: '15"', kind: "damage",
+        mods: {}, rules: ['Remains in play: 3" template = difficult terrain, scatters D6"/turn; units crossed take 3D6 hits at S2, no armour (Ward/Regen allowed)'], duration: "Remains in play" },
+      { id: "shd-4", name: "Shadowed Assailants", type: "Assailment", cv: "8+", range: "Combat", kind: "damage", instant: true,
+        mods: {}, rules: ["Enemy in combat takes 3D6 hits at S1, no armour or Regen (Ward allowed)"] },
+      { id: "shd-5", name: "Crawling Mists", type: "Conveyance", cv: "6+/9+", range: "Self", kind: "augment",
+        mods: {}, rules: ["6+: one friendly unit within 6\" gains Reserve Move; 9+: all friendly units within 6\""], duration: "Until end of turn" },
+      { id: "shd-6", name: "Chains of Darkness", type: "Hex", cv: "8+", range: '18"', kind: "hex",
+        mods: { M: -1, Ld: -1 }, rules: ["Target: -1 M (min 1), -1 Ld (min 2)"], duration: "Until start of your next turn" },
+    ],
+    // Lore of Chaos signature spells (chosen by the wizard's Mark of Chaos).
+    undivided: [
+      { id: "loc-undivided", name: "Winds of Chaos", type: "Hex", cv: "7+/9+", range: '21"', kind: "hex",
+        mods: { M: -1 }, rules: ["Undivided only. -1 M (cast 7+) or -2 M (cast 9+), min 1"], duration: "Until start of your next turn" },
+    ],
+    slaanesh: [
+      { id: "loc-slaanesh", name: "Acquiescence", type: "Hex", cv: "6+", range: '12"', kind: "hex",
+        mods: {}, rules: ["Slaanesh only. Target Strikes Last until end of the Combat phase"], duration: "Until end of turn" },
+    ],
     nurgle: [
       { id: "nurgle-sig", name: "Fleshy Abundance", type: "Enchantment", cv: "7+", range: "Self", kind: "augment",
-        mods: { T: 1 }, rules: ["Mark of Nurgle only; remains in play; caster & joined unit (T max 7)"], duration: "Remains in play" },
+        mods: { T: 1 }, rules: ["Nurgle only; remains in play; caster & joined unit (T max 7)"], duration: "Remains in play" },
+    ],
+    tzeentch: [
+      { id: "loc-tzeentch", name: "Blue Fire", type: "Magic Missile", cv: "9+", range: '18"', kind: "damage", instant: true,
+        mods: {}, rules: ["Tzeentch only. D6+3 hits at S4, AP -2, Flaming Attacks"] },
     ],
     // Paste these in to fill them out — structure matches Daemonology above.
     "battle-magic": [],
     "dark-magic": [],
-    "shadowlands": [],
   };
+
+  // --- Gifts, magic items & chaotic traits -----------------------------------
+  // cat groups them in the picker. mods apply to the model's live stats; rules
+  // are a short effect reminder shown as a tag. Saves: full plate -> Sv 4,
+  // heavy -> Sv 5. Points are intentionally omitted (they change with FAQs).
+  const ITEM_CATEGORIES = [
+    ["gift", "Gifts of Chaos"],
+    ["weapon", "Magic Weapons"],
+    ["armour", "Magic Armour"],
+    ["talisman", "Talismans"],
+    ["standard", "Magic Standards"],
+    ["enchanted", "Enchanted Items"],
+    ["arcane", "Arcane Items"],
+    ["trait", "Chaotic Traits"],
+  ];
+  const ITEMS = [
+    // Gifts of Chaos
+    { id: "gift-dark-majesty", cat: "gift", name: "Dark Majesty", mods: {}, rules: ["Enemy Fear/Terror tests in Command range take an extra -1 Ld"] },
+    { id: "gift-daemon-flesh", cat: "gift", name: "Daemon-flesh", mods: {}, rules: ["Cannot be wounded on a To Wound roll of 2"] },
+    { id: "gift-extra-arm", cat: "gift", name: "Extra Arm", mods: { A: 1 }, rules: ["+1 Attack (not mount)"] },
+    { id: "gift-diabolic", cat: "gift", name: "Diabolic Splendour", mods: {}, rules: ["Enemy shooting at this character/unit: extra -1 To Hit (inf/cav)"] },
+    { id: "gift-enchanting", cat: "gift", name: "Enchanting Aura", mods: {}, rules: ["Enemies in combat can't Strike First; others Strike Last (inf/cav)"] },
+    { id: "gift-aura-pain", cat: "gift", name: "Aura of Pain", mods: {}, rules: ["Once/game: an enemy unit in combat takes D6 S3 hits, no armour/Regen"] },
+    { id: "gift-master-mortals", cat: "gift", name: "Master of Mortals", mods: {}, rules: ["Friendly Marauders/Marauder Horsemen +1 Ld in Command range"] },
+    { id: "gift-acid-ichor", cat: "gift", name: "Acid Ichor", mods: {}, rules: ["In a challenge, each Wound lost inflicts a S4 AP -2 hit on the enemy"] },
+    { id: "gift-poison-slime", cat: "gift", name: "Poisonous Slime", mods: {}, rules: ["Poisoned Attacks (not mount)"] },
+    // Magic Weapons
+    { id: "wpn-dagger", cat: "weapon", name: "Dagger of the Dark Pantheon", mods: {}, rules: ["AP -2, Magical Attacks; +1 to next Casting/Dispel per Wound caused"] },
+    { id: "wpn-chieftain", cat: "weapon", name: "Chieftain's Blade", mods: { S: 1 }, rules: ["+1 S, AP -1, Armour Bane (1), Magical; +1 To Hit in a challenge"] },
+    { id: "wpn-taskmaster", cat: "weapon", name: "Taskmaster's Scourge", mods: { A: 1 }, rules: ["+1 Attack, AP -1, Magical; Ld test for +D3 M (inf only)"] },
+    { id: "wpn-spellthief", cat: "weapon", name: "Spellthieving Sword", mods: {}, rules: ["AP -1, Magical; wounded enemy Wizard forgets a random spell"] },
+    // Magic Armour
+    { id: "arm-damned", cat: "armour", name: "Armour of the Damned", mods: { Sv: 4 }, rules: ["Full plate; enemies must re-roll successful To Hit in combat"] },
+    { id: "arm-daemonic-plate", cat: "armour", name: "Daemonic Platemail", mods: { Sv: 4, T: 1, I: 1 }, rules: ["Full plate; +1 T, +1 I (inf/cav)"] },
+    { id: "arm-crimson-dargan", cat: "armour", name: "Crimson Armour of Dargan", mods: { Sv: 5 }, rules: ["Heavy armour; immune to Multiple Wounds (inf/cav)"] },
+    { id: "arm-serpent-scale", cat: "armour", name: "Mighty Serpent's Scalemail", mods: { Sv: 5 }, rules: ["Heavy armour; Strike First"] },
+    // Talismans
+    { id: "tal-carrion-crow", cat: "talisman", name: "Talisman of the Carrion Crow", mods: {}, rules: ["Regeneration (5+), Poisoned Attacks"] },
+    { id: "tal-crown-conquest", cat: "talisman", name: "Crown of Everlasting Conquest", mods: {}, rules: ["Regeneration (5+)"] },
+    { id: "tal-soaring-eagle", cat: "talisman", name: "Talisman of the Soaring Eagle", mods: {}, rules: ["Magic Resistance (-2); 5+ ward vs Magical Attacks"] },
+    { id: "tal-brazen-collar", cat: "talisman", name: "Brazen Collar", mods: {}, rules: ["Magic Resistance (-2)"] },
+    // Magic Standards
+    { id: "std-banner-gods", cat: "standard", name: "Banner of the Gods", mods: {}, rules: ["Unit ignores all negative Ld modifiers"] },
+    { id: "std-doom-totem", cat: "standard", name: "Doom Totem", mods: {}, rules: ["Enemies with line of sight: -1 Ld"] },
+    { id: "std-dark-powers", cat: "standard", name: "Banner of the Dark Powers", mods: {}, rules: ["Magic Resistance (-3)"] },
+    { id: "std-blasted", cat: "standard", name: "Blasted Standard", mods: {}, rules: ["Re-roll natural 1s on armour saves vs Shooting"] },
+    { id: "std-rage", cat: "standard", name: "Banner of Rage", mods: {}, rules: ["Frenzy (cannot be lost)"] },
+    { id: "std-baying-hound", cat: "standard", name: "Banner of the Baying Hound", mods: {}, rules: ["Vanguard (Heralds of Darkness)"] },
+    { id: "std-sea-raider", cat: "standard", name: "Sea Raider's Crest", mods: {}, rules: ["Fear (or Terror if already Fear) (Wolves of the Sea)"] },
+    { id: "std-icon-darkness", cat: "standard", name: "Icon of Darkness", mods: {}, rules: ["Enemy shooting at the unit: extra -1 To Hit"] },
+    // Enchanted Items
+    { id: "ench-bloodskull", cat: "enchanted", name: "Bloodskull Pendant", mods: {}, rules: ["May instead deal 1 S8 AP -1 Killing Blow hit to each enemy in base contact (inf)"] },
+    { id: "ench-rod-damned", cat: "enchanted", name: "Rod of the Damned", mods: {}, rules: ["Cast The Summoning (Daemonology) as a Bound spell, Power Level 2"] },
+    { id: "ench-daemon-barding", cat: "enchanted", name: "Daemon-Forged Barding", mods: {}, rules: ["On a charge: mount(s) +1 Attack (cav, Heralds of Darkness)"] },
+    { id: "ench-pendant-damnation", cat: "enchanted", name: "Pendant of Damnation", mods: {}, rules: ["+1 Attack for every Wound lost (inf/cav)"] },
+    { id: "ench-helm-eyes", cat: "enchanted", name: "Helm of Many Eyes", mods: {}, rules: ["Strike First (not mount); but subject to Stupidity"] },
+    { id: "ench-favour-gods", cat: "enchanted", name: "Favour of the Gods", mods: {}, rules: ["Single use: re-roll the D6 on the Gaze of the Gods table"] },
+    // Arcane Items
+    { id: "arc-skull-katam", cat: "arcane", name: "Skull of Katam", mods: {}, rules: ["+1 Casting for bearer & any Wizard within 3\" (friend or foe)"] },
+    { id: "arc-sceptre-power", cat: "arcane", name: "Sceptre of Power", mods: {}, rules: ["+1 Casting/Dispel; on a natural double, bearer takes a S10 AP -3 hit"] },
+    { id: "arc-grimoire", cat: "arcane", name: "Grimoire of Ogvold", mods: {}, rules: ["Knows all 7 spells of chosen lore; casts up to Level per turn"] },
+    { id: "arc-infernal-puppet", cat: "arcane", name: "Infernal Puppet", mods: {}, rules: ["Enemy Wizard within 15\" rolls an extra D6 to cast, discards highest"] },
+    { id: "arc-tome-dark-gods", cat: "arcane", name: "Tome of the Dark Gods", mods: {}, rules: ["Undivided: may swap spells for any Lore of Chaos mark spells"] },
+    { id: "arc-spell-familiar", cat: "arcane", name: "Spell Familiar", mods: {}, rules: ["Knows one extra spell (does not raise Level)"] },
+    // Chaotic Traits
+    { id: "trait-dark-hearts", cat: "trait", name: "Dark Hearts", mods: {}, rules: ["Losing side of a combat: -1 Ld on Break test (inf/cav)"] },
+    { id: "trait-unnatural-fortitude", cat: "trait", name: "Unnatural Fortitude", mods: {}, rules: ["+1 T unless wearing heavy/full plate armour"] },
+    { id: "trait-longstriders", cat: "trait", name: "Longstriders", mods: {}, rules: ["Vanguard unless wearing heavy/full plate armour"] },
+    { id: "trait-battle-hunger", cat: "trait", name: "Battle Hunger", mods: {}, rules: ["+2\" max charge range and +D3 to Charge/Pursuit (inf, whole unit)"] },
+    { id: "trait-brazen-will", cat: "trait", name: "Brazen Will", mods: {}, rules: ["Magic Resistance (-1) (inf/cav)"] },
+    { id: "trait-enhanced-reflexes", cat: "trait", name: "Enhanced Reflexes", mods: {}, rules: ["+2 Initiative in combat with a single hand weapon / Ensorcelled Weapon (not mount)"] },
+    { id: "trait-prophetic", cat: "trait", name: "Prophetic Foresight", mods: {}, rules: ["Enemy Scouts kept 18\" away, Ambushers 12\" away"] },
+  ];
+  const ITEMS_INDEX = {};
+  for (const it of ITEMS) ITEMS_INDEX[norm(it.name)] = it;
 
   const DURATIONS = [
     "Until start of your next turn",
@@ -200,6 +306,6 @@
   ];
 
   window.WOC_DATA = {
-    STATS, UNITS, UNIT_INDEX, MOUNTS, MOUNT_INDEX, MARKS, GAZE_REWARDS, SPELL_EFFECTS, LORES, LORE_NAMES, DURATIONS, norm,
+    STATS, UNITS, UNIT_INDEX, MOUNTS, MOUNT_INDEX, MARKS, GAZE_REWARDS, SPELL_EFFECTS, LORES, LORE_NAMES, ITEMS, ITEMS_INDEX, ITEM_CATEGORIES, DURATIONS, norm,
   };
 })();

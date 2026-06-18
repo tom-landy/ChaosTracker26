@@ -34,6 +34,7 @@
       options: [],        // equipment / command / wargear strings
       baseRules: [],      // static special rules from the list
       rewards: [],        // Gaze of the Gods
+      items: [],          // gifts / magic items / traits (by id)
       effects: [],        // active spells/buffs
       notes: "",
       matched: false,
@@ -69,6 +70,16 @@
     if (def.isChar || def.monster) unit.width = 1;
   }
 
+  // Match option/wargear strings against the known items library, returning ids.
+  function linkItems(options) {
+    const ids = [];
+    for (const opt of options || []) {
+      const it = D.ITEMS_INDEX && D.ITEMS_INDEX[D.norm(opt)];
+      if (it && ids.indexOf(it.id) === -1) ids.push(it.id);
+    }
+    return ids;
+  }
+
   function markKey(name) {
     const t = String(name || "").toLowerCase();
     if (t.includes("undivided")) return "undivided";
@@ -90,7 +101,10 @@
   function selectedNames(arr) {
     const out = [];
     for (const grp of arr || []) {
-      for (const sel of (grp && grp.selected) || []) if (sel && sel.name_en) out.push(cleanName(sel.name_en));
+      if (!grp) continue;
+      // items: grp.selected; command entries: banner under grp.magic.selected
+      const lists = [grp.selected, grp.magic && grp.magic.selected];
+      for (const list of lists) for (const sel of list || []) if (sel && sel.name_en) out.push(cleanName(sel.name_en));
     }
     return out;
   }
@@ -143,6 +157,9 @@
     const magic = selectedNames(entry.items).concat(selectedNames(entry.command));
 
     u.options = wargear.concat(command).concat(magic).filter(Boolean);
+
+    // Auto-link known gifts / magic items / traits to their effects.
+    u.items = linkItems(u.options);
 
     // Static special rules → tags.
     if (entry.specialRules && entry.specialRules.name_en) {
@@ -245,5 +262,5 @@
     return fromText(t);
   }
 
-  window.WOC_PARSER = { parse, fromJson, fromText, matchUnit, newUnit };
+  window.WOC_PARSER = { parse, fromJson, fromText, matchUnit, newUnit, linkItems };
 })();
