@@ -357,3 +357,7 @@ button.icon.flag.on { color: var(--gaze); }
 .help p { margin: 4px 0; }
 :focus-visible { outline: 2px solid var(--gaze); outline-offset: 1px; }
 button:focus-visible, a.tag:focus-visible { outline: 2px solid var(--gaze); outline-offset: 2px; }
+
+/* fleeing toggle (in the tracker row) */
+.fleebtn { background: #170c13; border: 1px solid var(--line); color: var(--muted); padding: 10px 16px; border-radius: 12px; font-weight: 700; }
+.fleebtn.on { background: linear-gradient(180deg, #f0922f, #b5621c); border-color: #7a3f12; color: #1a0d05; box-shadow: 0 2px 0 #6d3a10; }

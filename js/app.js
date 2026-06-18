@@ -9,7 +9,7 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v19"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v20"; // shown in the footer; matches the service-worker cache
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
@@ -206,8 +206,8 @@
     root.innerHTML = "";
     if (!state.units.length) {
       root.append(el("div", { class: "empty" }, [
-        el("p", { html: "No units yet." }),
-        el("p", { class: "muted", html: "Tap <b>Import list</b> to paste your Old World Builder army, or <b>Add unit</b> to build one by hand." }),
+        el("p", { html: "No army loaded." }),
+        el("p", { class: "muted", html: "Open the <b>☰ menu → Import list</b> and choose your Old World Builder <code>.owb.json</code> export." }),
       ]));
       return;
     }
@@ -271,9 +271,8 @@
     const markSel = el("select", { class: "mark", onchange: (e) => { u.mark = e.target.value || null; save(); render(); } });
     markSel.append(el("option", { value: "" }, "No mark"));
     for (const k in D.MARKS) markSel.append(el("option", { value: k, selected: u.mark === k ? "selected" : null }, D.MARKS[k].name));
-    const flagBtn = el("button", { class: "icon flag" + (u.fleeing ? " on" : ""), title: "Toggle Fleeing", onclick: () => { u.fleeing = !u.fleeing; save(); render(); } }, "⚑");
     const delBtn = el("button", { class: "icon danger", title: "Remove unit", onclick: () => { if (confirm("Remove " + (u.name || "unit") + "?")) { state.units = state.units.filter((x) => x !== u); save(); render(); } } }, "✕");
-    card.append(el("div", { class: "u-head" }, [caret, title, markSel, flagBtn, delBtn]));
+    card.append(el("div", { class: "u-head" }, [caret, title, markSel, delBtn]));
 
     // status badges
     const badges = [];
@@ -346,6 +345,7 @@
         () => { if ((u.woundsLost || 0) < wmax) { u.woundsLost = (u.woundsLost || 0) + 1; save(); render(); } },
         (n) => { u.woundsLost = Math.max(0, Math.min(wmax, wmax - n)); save(); render(); }));
     }
+    track.append(el("button", { class: "fleebtn" + (u.fleeing ? " on" : ""), onclick: () => { u.fleeing = !u.fleeing; save(); render(); } }, u.fleeing ? "⚑ Fleeing" : "⚑ Flee"));
     card.append(track);
 
     if (u.collapsed) return card; // compact view stops here
@@ -397,7 +397,6 @@
     card.append(el("div", { class: "u-actions" }, [
       canGaze ? el("button", { class: "act gaze", onclick: () => gazeModal(u) }, "👁 Gaze") : null,
       el("button", { class: "act spell", onclick: () => effectModal(u) }, "✦ Spell"),
-      el("button", { class: "act item", onclick: () => itemsModal(u) }, "⚜ Items"),
       el("button", { class: "act", onclick: () => editModal(u) }, "✎ Edit"),
     ]));
     if (u.options && u.options.length) {
@@ -498,27 +497,6 @@
     openModal("Gaze of the Gods — " + (u.name || "unit"), body, foot);
   }
 
-  function itemsModal(u) {
-    const body = el("div", {});
-    body.append(el("p", { class: "muted small", html: "Gifts, magic items &amp; chaotic traits. Tap to add to this model — stat effects apply live; others show as a reminder tag. Tap an active item's × on the card to remove." }));
-    for (const [cat, label] of D.ITEM_CATEGORIES) {
-      const list = el("div", { class: "picklist" });
-      for (const it of D.ITEMS.filter((x) => x.cat === cat)) {
-        const has = (u.items || []).indexOf(it.id) !== -1;
-        list.append(el("button", { class: "pick item" + (has ? " on" : ""), onclick: () => {
-          u.items = u.items || [];
-          if (has) u.items = u.items.filter((x) => x !== it.id); else u.items.push(it.id);
-          save(); render(); itemsModal(u);
-        } }, [
-          el("b", {}, (has ? "✓ " : "") + it.name),
-          el("span", { class: "muted small" }, describeMods(it)),
-        ]));
-      }
-      body.append(el("h4", {}, label));
-      body.append(list);
-    }
-    openModal("Items & traits — " + (u.name || "unit"), body, [el("button", { onclick: closeModal }, "Done")]);
-  }
 
   function describeMods(r) {
     const parts = [];
@@ -664,17 +642,6 @@
 
     body.append(el("label", { class: "full" }, ["Options / equipment", el("textarea", { rows: 3, onchange: (e) => { u.options = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean); save(); } }, u.options.join("\n"))]));
     body.append(el("label", { class: "full" }, ["Notes", el("textarea", { rows: 2, placeholder: "Your own battle notes…", onchange: (e) => { u.notes = e.target.value; save(); } }, u.notes || "")]));
-
-    body.append(el("h4", {}, "Manage"));
-    body.append(el("div", { class: "managerow" }, [
-      el("button", { onclick: () => { const i = state.units.indexOf(u); if (i > 0) { state.units.splice(i, 1); state.units.splice(i - 1, 0, u); save(); render(); } } }, "↑ Move up"),
-      el("button", { onclick: () => { const i = state.units.indexOf(u); if (i > -1 && i < state.units.length - 1) { state.units.splice(i, 1); state.units.splice(i + 1, 0, u); save(); render(); } } }, "↓ Move down"),
-      el("button", { onclick: () => {
-        const copy = clone(u); copy.id = P.newUnit().id;
-        copy.modelsLost = 0; copy.woundsLost = 0; copy.mountWoundsLost = 0; copy.rewards = []; copy.effects = []; copy.fleeing = false;
-        const i = state.units.indexOf(u); state.units.splice(i + 1, 0, copy); save(); closeModal(); render();
-      } }, "⧉ Duplicate"),
-    ]));
     openModal("Edit — " + (u.name || "unit"), body, [el("button", { onclick: () => { closeModal(); render(); } }, "Done")]);
   }
 
@@ -771,13 +738,6 @@
   }
 
   // ---- top bar actions -----------------------------------------------------
-  function addUnit() {
-    const u = P.newUnit();
-    u.name = "New unit";
-    state.units.push(u);
-    save(); render();
-    editModal(u);
-  }
   // Advance to the next turn: remove non-permanent additions (spells that last
   // "until your next turn" or "until end of turn"). Lasting Gaze rewards, items,
   // "remains in play" spells and permanent effects are kept.
@@ -859,8 +819,8 @@
       "<h4>Extra lines</h4><p class='small'>🐎 <b>Mount</b> shows the mount's own profile; its <b>(+N)</b> bonuses are already folded into the rider above. <b>Ch ★</b> shows only the champion's differing stats.</p>" +
       "<h4>Casualties</h4><p class='small'><b>−</b> takes a wound / removes a model, <b>+</b> restores. Tap the number to set it exactly. Badges flag <b>½ strength</b>, <b>Fleeing</b> (⚑ toggle) and <b>Destroyed</b>.</p>" +
       "<h4>Turn</h4><p class='small'><b>Next ▶</b> advances the turn and clears spells lasting “until your next turn / end of turn”. Lasting Gaze rewards, items and remains-in-play spells stay.</p>" +
-      "<h4>Gaze · Spell · Items</h4><p class='small'>👁 <b>Gaze</b> (characters with the rule): roll a D6 or pick a result. ✦ <b>Spell</b>: pick a lore spell or building block; augments/hexes change stats live. ⚜ <b>Items</b>: gifts, magic items &amp; traits.</p>" +
-      "<h4>Armies</h4><p class='small'>Use the dropdown to switch armies; the ☰ menu has New / Rename / Delete, New battle (reset combat state), and <b>Backup / Restore</b> to a file.</p>" +
+      "<h4>Gaze &amp; Spells</h4><p class='small'>👁 <b>Gaze</b> (characters with the rule): roll a D6 or pick a result. ✦ <b>Spell</b>: pick a lore spell or building block; augments/hexes change stats live. Magic items from your imported list apply automatically (shown as ⚜ chips).</p>" +
+      "<h4>Armies</h4><p class='small'>Use the dropdown to switch armies; the ☰ menu has Import, New / Rename / Delete, New battle (reset combat state), and <b>Backup / Restore</b> to a file.</p>" +
       "<p class='muted small'>Tap any special-rule tag to open its page on tow.whfb.app. Unofficial fan tool; values are editable defaults — verify against your book.</p>";
     openModal("How to use", body, [el("button", { onclick: closeModal }, "Got it")]);
   }
@@ -881,7 +841,6 @@
   // ---- wire up -------------------------------------------------------------
   function init() {
     $("#btnImport").addEventListener("click", importModal);
-    $("#btnAdd").addEventListener("click", addUnit);
     $("#btnNextTurn").addEventListener("click", nextTurn);
     $("#btnPrevTurn").addEventListener("click", () => { if ((state.turn || 1) > 1) { state.turn--; save(); render(); flash("Turn " + state.turn); } });
     $("#btnReset").addEventListener("click", () => {
