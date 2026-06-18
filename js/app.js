@@ -150,12 +150,16 @@
   }
 
   function modelsRemaining(u) { return Math.max(0, (u.models || 0) - (u.modelsLost || 0)); }
-  function rankInfo(u) {
-    const rem = modelsRemaining(u);
-    const w = Math.max(1, u.width || 5);
-    const ranks = Math.floor(rem / w);
-    const rankBonus = w >= 5 ? Math.min(3, Math.max(0, ranks - 1)) : 0;
-    return { rem, ranks, rankBonus, full: rem >= w };
+
+  // Build a link to a special rule's page on tow.whfb.app (parentheticals stripped).
+  function ruleLookupUrl(name) {
+    const slug = String(name || "")
+      .replace(/\([^)]*\)/g, "")
+      .replace(/\{[^}]*\}/g, "")
+      .trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return "https://tow.whfb.app/special-rules/" + slug;
   }
 
   // ---- rendering -----------------------------------------------------------
@@ -223,7 +227,6 @@
 
   function unitCard(u) {
     const { eff, base, rules } = effective(u);
-    const ri = rankInfo(u);
     const isSingle = u.isChar || u.models <= 1;
     const wmax = num(base.W) || 1;
     const wrem = Math.max(0, wmax - (u.woundsLost || 0));
@@ -302,11 +305,6 @@
       track.append(stepper("Models", modelsRemaining(u), u.models,
         () => { if (u.modelsLost > 0) { u.modelsLost--; save(); render(); } },
         () => { if (u.modelsLost < u.models) { u.modelsLost++; save(); render(); } }));
-      const rb = el("div", { class: "rankbox" }, [
-        el("span", { class: "muted" }, "Ranks " + ri.ranks),
-        el("span", { class: "chip" + (ri.rankBonus ? " on" : "") }, "Rank bonus +" + ri.rankBonus),
-      ]);
-      track.append(rb);
     }
     if (isSingle || multiWound) {
       // + heals a wound, − takes a wound (matches the remaining count shown)
@@ -321,7 +319,7 @@
     if (hasTags) {
       const tags = el("div", { class: "tags" });
       if (u.mount) tags.append(el("span", { class: "tag t-mount" }, "🐎 " + u.mount));
-      for (const r of (u.baseRules || [])) tags.append(el("span", { class: "tag t-rule" }, r));
+      for (const r of (u.baseRules || [])) tags.append(el("a", { class: "tag t-rule link", href: ruleLookupUrl(r), target: "_blank", rel: "noopener noreferrer", title: "Look up “" + r + "” on tow.whfb.app" }, r));
       for (const r of rules) tags.append(el("span", { class: "tag t-" + r.src }, r.text));
       card.append(tags);
     }
