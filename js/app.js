@@ -9,7 +9,7 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v21"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v22"; // shown in the footer; matches the service-worker cache
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
@@ -359,10 +359,8 @@
     // casualties / wounds tracker (always shown — the core live control)
     const track = el("div", { class: "track" });
     if (!isSingle) {
-      track.append(stepper("Models", remModels, u.models,
-        () => { if (u.modelsLost > 0) { u.modelsLost--; save(); render(); } },
-        () => { if (u.modelsLost < u.models) { u.modelsLost++; save(); render(); } },
-        (n) => { u.modelsLost = Math.max(0, Math.min(u.models, u.models - n)); save(); render(); }));
+      track.append(stepper("Models", remModels, u.models, null, null,
+        (n) => { u.modelsLost = Math.max(0, Math.min(u.models, u.models - n)); save(); render(); }, true));
     }
     if (isSingle || multiWound) {
       track.append(stepper(u.mountProfile ? "Wounds*" : "Wounds", wrem, wmax,
@@ -448,10 +446,13 @@
     return d;
   }
 
-  function stepper(label, val, max, inc, dec, setTo) {
-    const valEl = el("div", { class: "step-v" + (setTo ? " tappable" : ""), title: setTo ? "Tap to set exactly" : null,
+  function stepper(label, val, max, inc, dec, setTo, compact) {
+    const valEl = el("div", { class: "step-v" + (setTo ? " tappable" : ""), title: setTo ? "Tap to set" : null,
       onclick: setTo ? () => { const n = prompt("Set " + label.replace("*", "") + " (0–" + max + "):", String(val)); if (n == null) return; const v = parseInt(n, 10); if (!isNaN(v)) setTo(Math.max(0, Math.min(max, v))); } : null,
     }, [el("b", {}, String(val)), el("span", { class: "muted" }, "/" + max)]);
+    if (compact) {
+      return el("div", { class: "stepper compact" + (val <= 0 ? " empty" : "") }, [el("div", { class: "step-l" }, label), valEl]);
+    }
     return el("div", { class: "stepper" + (val <= 0 ? " empty" : "") }, [
       el("div", { class: "step-l" }, label),
       el("div", { class: "step-c" }, [

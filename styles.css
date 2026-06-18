@@ -370,3 +370,8 @@ button:focus-visible, a.tag:focus-visible { outline: 2px solid var(--gaze); outl
 .stbtn.dead.on { background: linear-gradient(180deg,#b23b32,#7a221c); border-color:#5a2020; color:#fff; }
 .badge.b-quarter { color: var(--gaze); border-color: #6a3c12; background: rgba(232,134,42,0.14); }
 .summary.loss { color: var(--gaze); text-align: center; margin-top: -6px; }
+
+/* compact models counter (tap to set, no +/-) */
+.stepper.compact { padding: 8px 12px; }
+.stepper.compact .step-v.tappable { padding: 2px 6px; border: 1px dashed var(--line2); border-radius: 8px; }
+.stepper.compact .step-v b { font-size: 18px; }
