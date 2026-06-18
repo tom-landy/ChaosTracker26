@@ -248,7 +248,7 @@
     if (u.mountProfile) {
       const mp = u.mountProfile;
       const mRow = el("div", { class: "stats mount" });
-      mRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "🐎"), el("div", { class: "stat-v mlbl" }, "Mt")]));
+      // 9 stat cells aligned under the model's M..Ld
       for (const k of D.STATS) {
         const add = typeof mp[k] === "string" && /^\+/.test(mp[k]);
         mRow.append(el("div", { class: "stat" + (add ? " mountadd" : "") }, [
@@ -256,7 +256,9 @@
           el("div", { class: "stat-v mlbl" }, fmtMount(mp[k])),
         ]));
       }
-      mRow.append(el("div", { class: "stat ghostcell" })); // pad to align with Sv/Wd
+      mRow.append(el("div", { class: "stat ghostcell" })); // under Sv
+      // mount marker sits at the end, under the Ward (Wd) column
+      mRow.append(el("div", { class: "stat mlabel" }, [el("div", { class: "stat-l" }, "Mt"), el("div", { class: "stat-v mlbl" }, "🐎")]));
       card.append(mRow);
       if (u.mountNote) card.append(el("div", { class: "mountnote muted small" }, u.mountNote));
     }
@@ -265,9 +267,10 @@
     const track = el("div", { class: "track" });
     const multiWound = num(base.W) > 1;
     if (!isSingle) {
+      // + restores a model, − removes one (matches the remaining count shown)
       track.append(stepper("Models", modelsRemaining(u), u.models,
-        () => { if (u.modelsLost < u.models) { u.modelsLost++; save(); render(); } },
-        () => { if (u.modelsLost > 0) { u.modelsLost--; save(); render(); } }));
+        () => { if (u.modelsLost > 0) { u.modelsLost--; save(); render(); } },
+        () => { if (u.modelsLost < u.models) { u.modelsLost++; save(); render(); } }));
       const rb = el("div", { class: "rankbox" }, [
         el("span", { class: "muted" }, "Ranks " + ri.ranks),
         el("span", { class: "chip" + (ri.rankBonus ? " on" : "") }, "Rank bonus +" + ri.rankBonus),
@@ -275,9 +278,10 @@
       track.append(rb);
     }
     if (isSingle || multiWound) {
+      // + heals a wound, − takes a wound (matches the remaining count shown)
       track.append(stepper(u.mountProfile ? "Wounds*" : "Wounds", wrem, wmax,
-        () => { if ((u.woundsLost || 0) < wmax) { u.woundsLost = (u.woundsLost || 0) + 1; save(); render(); } },
-        () => { if ((u.woundsLost || 0) > 0) { u.woundsLost--; save(); render(); } }));
+        () => { if ((u.woundsLost || 0) > 0) { u.woundsLost--; save(); render(); } },
+        () => { if ((u.woundsLost || 0) < wmax) { u.woundsLost = (u.woundsLost || 0) + 1; save(); render(); } }));
     }
     card.append(track);
 
