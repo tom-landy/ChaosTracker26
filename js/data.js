@@ -17,37 +17,53 @@
     return Object.assign({ M, WS, BS, S, T, W, I, A, Ld, Sv: null, Ward: null }, extra || {});
   }
 
-  // --- Unit / character stat defaults (keyed by normalised name) -------------
-  // category: Characters | Core | Special | Rare. isChar marks single-model heroes.
+  // --- Unit / character stat defaults (Warriors of Chaos reference) ----------
+  // Profiles are the exact characteristic lines from the army reference. The
+  // `category` here is only a fallback for plain-text imports — a JSON import
+  // always uses the unit's actual army-composition slot. Armour saves (Sv) are
+  // derived from base wargear (light 6+, heavy 5+, full plate 4+, shield +1,
+  // cavalry barding +1); chosen options (extra shields etc.) aren't auto-added.
+  // For cavalry/chariots, M is the steed/mount's Movement. Notes hold champion
+  // profiles and key special rules. All values are editable in-app.
   const UNITS = [
     // Characters
-    { name: "Chaos Lord", category: "Characters", isChar: true, profile: p(4, 8, 5, 5, 5, 3, 7, 4, 9, { Sv: 4 }) },
-    { name: "Exalted Hero", category: "Characters", isChar: true, profile: p(4, 7, 4, 5, 5, 2, 6, 3, 8, { Sv: 4 }) },
-    { name: "Exalted Champion", category: "Characters", isChar: true, profile: p(4, 7, 4, 5, 5, 2, 6, 3, 8, { Sv: 4 }) },
-    { name: "Sorcerer Lord", category: "Characters", isChar: true, profile: p(4, 5, 4, 4, 5, 3, 5, 2, 9), wizard: 3 },
-    { name: "Chaos Sorcerer", category: "Characters", isChar: true, profile: p(4, 4, 3, 4, 4, 2, 4, 1, 8), wizard: 1 },
-    { name: "Daemon Prince", category: "Characters", isChar: true, profile: p(6, 8, 5, 6, 6, 5, 8, 5, 9, { Sv: 4, Ward: 5 }) },
+    { name: "Chaos Lord", category: "Characters", isChar: true, profile: p(4, 7, 3, 5, 5, 4, 6, 5, 9, { Sv: 4 }), note: "Full plate. Chaos Armour (5+), Gaze of the Gods" },
+    { name: "Exalted Champion", category: "Characters", isChar: true, profile: p(4, 6, 3, 5, 4, 3, 5, 4, 8, { Sv: 5 }), note: "Chaos Armour (5+), Gaze of the Gods" },
+    { name: "Aspiring Champion", category: "Characters", isChar: true, profile: p(4, 5, 3, 4, 4, 2, 4, 3, 8, { Sv: 5 }), note: "Chaos Armour (5+), Gaze of the Gods" },
+    { name: "Sorcerer Lord", category: "Characters", isChar: true, profile: p(4, 5, 3, 4, 4, 3, 4, 3, 8, { Sv: 5 }), note: "Wizard. Chaos Armour (5+), Lore of Chaos" },
+    { name: "Exalted Sorcerer", category: "Characters", isChar: true, profile: p(4, 4, 3, 4, 4, 2, 3, 2, 8, { Sv: 6 }), note: "Wizard. Chaos Armour (5+), Lore of Chaos" },
+    { name: "Daemon Prince", category: "Characters", isChar: true, profile: p(6, 7, 5, 6, 5, 4, 7, 5, 9, { Sv: 4 }), note: "Wizard. Chaos Armour (4+), Regeneration (5+), Fear, Unbreakable" },
+    { name: "Marauder Tribe Chieftain", category: "Characters", isChar: true, profile: p(4, 5, 3, 4, 4, 2, 4, 3, 8, { Sv: 6 }), note: "Chaos Armour (6+), Gaze of the Gods, Warband" },
+    { name: "Chaos Warhound Handler", category: "Characters", isChar: true, profile: p(5, 5, 3, 4, 4, 1, 4, 1, 8, { Sv: 5 }), note: "Handler, Loner, Vanguard" },
 
-    // Core
-    { name: "Chaos Warriors", category: "Core", profile: p(4, 5, 3, 4, 4, 1, 5, 1, 8, { Sv: 4 }), champ: "Champion of Chaos" },
-    { name: "Chaos Marauders", category: "Core", profile: p(4, 3, 3, 3, 3, 1, 3, 1, 6), champ: "Chieftain" },
-    { name: "Marauder Horsemen", category: "Core", profile: p(8, 3, 3, 3, 3, 1, 3, 1, 6, { Sv: 6 }), champ: "Chieftain" },
-    { name: "Chaos Warhounds", category: "Core", profile: p(9, 3, 0, 3, 3, 1, 3, 1, 5) },
-    { name: "Chaos Chariot", category: "Core", isChar: false, profile: p(8, 0, 0, 5, 5, 4, 0, 0, 8, { Sv: 4 }), monster: true },
+    // Core / regiments
+    { name: "Chaos Warriors", category: "Core", profile: p(4, 5, 3, 4, 4, 1, 4, 1, 8, { Sv: 5 }), note: "Champion A2. Ensorcelled Weapons, Close Order" },
+    { name: "Chaos Marauders", category: "Core", profile: p(4, 4, 3, 3, 3, 1, 3, 1, 6, { Sv: 6 }), note: "Headman A2. Horde, Shieldwall, Warband" },
+    { name: "Marauder Horsemen", category: "Core", profile: p(8, 4, 3, 3, 3, 1, 3, 1, 6, { Sv: 5 }), note: "Warhorse (M8). Horsemaster A2. Fast Cavalry, Fire & Flee" },
+    { name: "Chaos Warhounds", category: "Core", profile: p(7, 4, 0, 3, 3, 1, 3, 1, 6, { Sv: null }), note: "Loner, Open Order, Swiftstride" },
+    { name: "Marauder Tribe Berserkers", category: "Core", profile: p(5, 4, 3, 3, 4, 1, 3, 1, 7, { Sv: 6 }), note: "Headtaker A2. Frenzy, Skirmishers, Warband" },
+    { name: "Marauder Tribe Huscarls", category: "Core", profile: p(8, 4, 3, 3, 4, 1, 3, 1, 7, { Sv: 6 }), note: "Warhorse (M8). First Sword A2. Counter Charge, Furious Charge" },
 
-    // Special
-    { name: "Chaos Knights", category: "Special", profile: p(8, 5, 3, 4, 4, 1, 5, 1, 8, { Sv: 2 }), champ: "Doom Knight" },
-    { name: "Chaos Chosen", category: "Special", profile: p(4, 5, 3, 4, 4, 1, 5, 2, 8, { Sv: 4 }), champ: "Chosen Champion" },
-    { name: "Chaos Ogres", category: "Special", profile: p(6, 3, 2, 4, 4, 3, 2, 3, 7, { Sv: 5 }), champ: "Ogre Champion" },
-    { name: "Forsaken", category: "Special", profile: p(4, 4, 0, 4, 4, 1, 4, 1, 8) },
-    { name: "Dragon Ogres", category: "Special", profile: p(7, 4, 3, 5, 5, 4, 3, 4, 8, { Sv: 4 }), champ: "Shartak" },
+    // Special / Rare
+    { name: "Chaos Knights", category: "Special", profile: p(7, 5, 3, 4, 4, 1, 4, 1, 8, { Sv: 3 }), note: "Chaos Steed (M7). Champion A2. heavy+shield+barding" },
+    { name: "Chosen Chaos Warriors", category: "Special", profile: p(4, 5, 3, 4, 4, 1, 4, 2, 9, { Sv: 5 }), note: "Champion A3. Chaos Armour (6+), Stubborn" },
+    { name: "Chosen Chaos Knights", category: "Special", profile: p(7, 5, 3, 4, 4, 1, 4, 2, 9, { Sv: 3 }), note: "Chaos Steed (M7). Champion A3. Chaos Armour (6+), Stubborn" },
+    { name: "Chaos Chariot", category: "Special", isChar: false, monster: true, profile: p(7, null, null, 5, 5, 4, null, null, null, { Sv: 3 }), note: "Charioteers WS5 A1, Steeds A1. Impact Hits (D6+1)" },
+    { name: "Chosen Chaos Chariot", category: "Special", isChar: false, monster: true, profile: p(7, null, null, 5, 5, 4, null, null, null, { Sv: 3 }), note: "Charioteers WS5 A2 Ld9. Impact Hits (D6+1)" },
+    { name: "Gorebeast Chariot", category: "Special", isChar: false, monster: true, profile: p(6, null, null, 5, 5, 4, null, null, null, { Sv: 3 }), note: "Gorebeast S5 A3; Charioteers WS5 A1. Impact Hits (D6+2)" },
+    { name: "Chaos Ogres", category: "Special", profile: p(6, 3, 2, 4, 4, 3, 2, 3, 7, { Sv: 5 }), note: "Champion A4. Armour Bane (1), Fear, Impact Hits (1)" },
+    { name: "Forsaken", category: "Special", profile: p(5, 4, 0, 4, 4, 1, 3, "D3", 8, { Sv: 5 }), note: "Random Attacks (D3). Furious Charge, Impetuous, Stubborn" },
+    { name: "Skin Wolves", category: "Special", profile: p(7, 5, null, 4, 4, 3, 4, 3, 7, { Sv: null }), note: "Jarl A4. Regeneration (5+), Skirmishers, Primal Fury" },
+    { name: "Chaos Trolls", category: "Rare", profile: p(6, 3, 1, 5, 4, 3, 2, 3, 4, { Sv: 6 }), note: "Regeneration (5+), Stupidity, Flammable, Fear" },
+    { name: "Chaos Spawn", category: "Rare", isChar: false, monster: true, profile: p("2D6+1", 3, 0, 4, 5, 3, 3, "D6", 10, { Sv: 5 }), note: "Random Attacks/Movement, Unbreakable, Fear" },
+    { name: "Chimera", category: "Rare", isChar: false, monster: true, profile: p(6, 4, 0, 6, 5, 4, 3, 6, 5, { Sv: 5 }), note: "Fly (10), Terror, Large Target, Armour Bane (2)" },
+    { name: "Gigantic Spawn of Chaos", category: "Rare", isChar: false, monster: true, profile: p("3D6", 3, 0, 6, 6, 6, 3, "D6+1", 10, { Sv: 5 }), note: "Behemoth. Random Attacks/Movement, Terror, Unbreakable" },
+    { name: "Hellcannon", category: "Rare", isChar: false, monster: true, profile: p(3, 4, 3, 5, 6, 5, 1, 5, 4, { Sv: 4 }), note: "Behemoth. Dwarf Handlers (WS4 A1). Terror, Impact Hits (D6)" },
+    { name: "Warpfire Dragon", category: "Rare", isChar: false, monster: true, profile: p(6, 6, 0, 6, 6, 6, 3, 5, 8, { Sv: 4 }), note: "Behemoth. Fly (10), Terror, Lore of Chaos, Magic Resistance (-2)" },
 
-    // Rare
-    { name: "Chaos Trolls", category: "Rare", profile: p(6, 3, 1, 5, 4, 3, 1, 3, 4), note: "Regeneration, Stupidity" },
-    { name: "Chaos Spawn", category: "Rare", profile: p(4, 3, 0, 4, 5, 4, 1, 0, 10), note: "Random Attacks (D6+1), Random Movement" },
-    { name: "Chaos Giant", category: "Rare", isChar: false, profile: p(6, 3, 3, 6, 5, 6, 3, 0, 10), monster: true, note: "Special attacks" },
-    { name: "Chaos Warshrine", category: "Rare", isChar: false, profile: p(4, 3, 0, 5, 6, 5, 1, 3, 8, { Sv: 4 }), monster: true },
-    { name: "Hellcannon", category: "Rare", isChar: false, profile: p(6, 3, 3, 6, 6, 5, 1, 4, 7, { Sv: 4 }), monster: true, note: "War machine / monster" },
+    // Named characters
+    { name: "Frydaal The Chainmaker", category: "Characters", isChar: true, profile: p(4, 6, 3, 5, 4, 3, 5, 4, 9, { Sv: 3 }), note: "Named. Full plate + shield. Storm's Wrath, Gaze of the Gods" },
+    { name: "Galrauch", category: "Characters", isChar: true, monster: true, profile: p(6, 6, 3, 6, 6, 6, 4, 6, 9, { Sv: 4 }), note: "Named. Behemoth. Wizard (Dark Magic). Fly (10), Mark of Tzeentch, Terror" },
   ];
 
   // Build a quick lookup by several normalised aliases.

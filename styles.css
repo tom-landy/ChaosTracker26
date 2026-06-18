@@ -173,6 +173,7 @@ button.icon.danger { color: var(--danger); }
 .stats.mount .stat.mountadd .stat-v { color: var(--brass); }
 .stat.ghostcell { background: transparent; border: none; }
 .mountnote { margin: 2px 2px 0; color: var(--brass); opacity: 0.8; }
+.unitnote { margin: 6px 2px 0; font-style: italic; }
 
 /* trackers */
 .track { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 11px 0 4px; }

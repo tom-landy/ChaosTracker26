@@ -11,13 +11,27 @@
   const STORE_KEY = "chaostracker26.v1";
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
+  const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
 
   // ---- state ---------------------------------------------------------------
-  let state = load() || { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION };
+  let state = load() || { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION };
   // Migrate older saves to the corrected Gaze of the Gods table, persisting once.
   if (!state.gaze || state.gazeVersion !== GAZE_VERSION) {
     state.gaze = clone(D.GAZE_REWARDS);
     state.gazeVersion = GAZE_VERSION;
+    save();
+  }
+  // Re-apply canonical unit profiles to matched units after a stat-data fix.
+  if (state.unitVersion !== UNIT_VERSION) {
+    for (const u of state.units || []) {
+      const def = P.matchUnit(u.name);
+      if (def) {
+        u.profile = clone(def.profile);
+        u.isChar = !!def.isChar;
+        u.notes = def.note || "";
+      }
+    }
+    state.unitVersion = UNIT_VERSION;
     save();
   }
   // Re-apply canonical mount profiles to existing units after a mount-data fix.
@@ -47,8 +61,8 @@
   function foldMount(profile, mp) {
     const out = Object.assign({}, profile);
     if (!mp) return out;
-    // model moves at the mount's Movement
-    if (mp.M != null && mp.M !== "" && mountAdd(mp.M) == null) out.M = parseInt(mp.M, 10);
+    // model moves at the mount's Movement (skip if the rider's M is random text)
+    if (mp.M != null && mp.M !== "" && mountAdd(mp.M) == null && !isNaN(parseInt(mp.M, 10))) out.M = parseInt(mp.M, 10);
     for (const k of D.STATS) {
       const add = mountAdd(mp[k]);
       if (add != null) out[k] = (parseInt(out[k], 10) || 0) + add;
@@ -57,10 +71,14 @@
   }
 
   // Sum numeric mods from mark + rewards + effects onto the (mount-folded) base.
+  // Non-numeric characteristics (e.g. "D3", "2D6+1") are passed through untouched.
   function effective(unit) {
     const base = foldMount(unit.profile, unit.mountProfile);
     const eff = {};
-    for (const k of D.STATS) eff[k] = num(base[k]);
+    for (const k of D.STATS) {
+      const n = parseInt(base[k], 10);
+      eff[k] = isNaN(n) ? (base[k] == null ? "" : base[k]) : n;
+    }
     eff.Sv = base.Sv; eff.Ward = base.Ward;
     const rules = [];
     const sources = [];
@@ -69,7 +87,7 @@
       if (mods) for (const k in mods) {
         if (k === "Ward") { eff.Ward = bestSave(eff.Ward, mods.Ward); }
         else if (k === "Sv") { eff.Sv = bestSave(eff.Sv, mods.Sv); }
-        else if (k in eff) eff[k] = (num(eff[k]) || 0) + mods[k];
+        else if (typeof eff[k] === "number") eff[k] = eff[k] + mods[k];
       }
       if (rls) for (const r of rls) rules.push({ text: r, src: label });
     }
@@ -86,9 +104,9 @@
     for (const ef of unit.effects || []) {
       applyMods(ef.mods, ef.rules, ef.kind === "hex" ? "hex" : "aug");
     }
-    // Characteristics cap at 10 (and never go negative).
+    // Characteristics cap at 10 (and never go negative); skip random/text values.
     for (const k of ["WS", "BS", "S", "T", "W", "I", "A", "Ld"]) {
-      if (eff[k] !== "" && eff[k] != null) eff[k] = Math.max(0, Math.min(10, eff[k]));
+      if (typeof eff[k] === "number") eff[k] = Math.max(0, Math.min(10, eff[k]));
     }
     return { eff, base, rules, sources };
   }
@@ -252,6 +270,7 @@
       for (const r of rules) tags.append(el("span", { class: "tag t-" + r.src }, r.text));
       card.append(tags);
     }
+    if (u.notes) card.append(el("div", { class: "unitnote muted small" }, u.notes));
 
     // active rewards & effects (with remove)
     const chips = el("div", { class: "active" });
@@ -637,7 +656,7 @@
     $("#btnEndTurn").addEventListener("click", clearTurnEffects);
     $("#btnReset").addEventListener("click", () => {
       if (confirm("Clear the whole army? This can't be undone.")) {
-        state = { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION };
+        state = { meta: { name: "My Army", points: "" }, units: [], gaze: clone(D.GAZE_REWARDS), gazeVersion: GAZE_VERSION, mountVersion: MOUNT_VERSION, unitVersion: UNIT_VERSION };
         save(); render();
       }
     });
