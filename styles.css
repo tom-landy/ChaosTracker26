@@ -83,18 +83,27 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--gaze); outl
   transition: padding 0.15s ease;
 }
 /* condensed sticky header once you scroll, to free up screen space */
-.topbar.compact { padding-top: calc(5px + env(safe-area-inset-top, 0px)); padding-bottom: 5px; gap: 6px; }
-.topbar.compact .armyrow, .topbar.compact .points { display: none; }
+.topbar.compact { padding-top: calc(4px + env(safe-area-inset-top, 0px)); padding-bottom: 4px; gap: 6px; }
+.topbar.compact .points { display: none; }
 .topbar.compact .brand img { width: 20px; height: 20px; }
-.topbar.compact .armyname { font-size: 15px; }
 .topbar.compact .actions button { padding: 6px 9px; font-size: 13px; }
 .topbar.compact .turnbox { padding: 2px 4px; }
 .topbar.compact .turnstep { padding: 4px 8px; }
+
+/* overflow menu */
+.menu { position: relative; }
+.menupanel { position: absolute; right: 0; top: calc(100% + 8px); display: flex; flex-direction: column; gap: 5px;
+  background: linear-gradient(180deg, #2a1626, var(--bg2)); border: 1px solid var(--line2); border-radius: 12px; padding: 8px;
+  min-width: 190px; box-shadow: 0 14px 34px rgba(0,0,0,0.55); z-index: 60; }
+.menupanel[hidden] { display: none; }
+.menupanel button { text-align: left; background: var(--card2); padding: 11px 12px; }
+.menupanel button.danger { color: var(--danger); border-color: #5a2222; }
+.menu-sep { height: 1px; background: var(--line); margin: 2px 0; }
 .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .brand img { border-radius: 7px; flex: none; box-shadow: 0 0 0 1px var(--brass-d), 0 0 14px rgba(232,134,42,0.35); }
 .brandtext { display: flex; flex-direction: column; min-width: 0; }
 .armyrow { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
-.armysel { font-size: 12px; max-width: 46vw; padding: 4px 6px; background: #170c13; color: var(--brass); border-color: var(--line); border-radius: 8px; }
+.armysel { font-size: 14px; max-width: 52vw; padding: 6px 8px; background: #170c13; color: var(--brass); border-color: var(--line); border-radius: 8px; font-weight: 600; }
 .iconbtn { padding: 4px 9px; font-size: 14px; line-height: 1; background: var(--card2); }
 .iconbtn.danger { color: var(--danger); border-color: #5a2222; }
 .iconbtn:disabled { opacity: 0.35; }

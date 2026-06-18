@@ -186,7 +186,6 @@
   }
 
   function render() {
-    $("#armyName").value = state.meta.name || "";
     $("#armyPoints").textContent = state.meta.points ? state.meta.points + " pts" : "";
     const tb = $("#turnNum"); if (tb) tb.textContent = state.turn || 1;
     const pv = $("#btnPrevTurn"); if (pv) pv.disabled = (state.turn || 1) <= 1;
@@ -789,8 +788,19 @@
       DB.activeId = DB.armies[0].id; state = activeArmy();
       save(); render();
     });
-    $("#armyName").addEventListener("change", (e) => { state.meta.name = e.target.value; save(); render(); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+    $("#btnRenameArmy").addEventListener("click", () => {
+      const name = prompt("Rename army:", state.meta.name || "");
+      if (name == null) return;
+      state.meta.name = name.trim() || state.meta.name;
+      save(); render();
+    });
+    // menu open/close
+    const menuPanel = $("#menuPanel");
+    const toggleMenu = (open) => { if (!menuPanel) return; const show = open == null ? menuPanel.hasAttribute("hidden") : open; if (show) menuPanel.removeAttribute("hidden"); else menuPanel.setAttribute("hidden", ""); };
+    $("#btnMenu").addEventListener("click", (e) => { e.stopPropagation(); toggleMenu(); });
+    if (menuPanel) menuPanel.addEventListener("click", () => toggleMenu(false));
+    document.addEventListener("click", (e) => { const m = $(".menu"); if (m && !m.contains(e.target)) toggleMenu(false); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") { toggleMenu(false); closeModal(); } });
     // Condense the sticky header once the page is scrolled.
     const topbar = $(".topbar");
     const onScroll = () => { if (topbar) topbar.classList.toggle("compact", window.scrollY > 6); };

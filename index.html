@@ -17,26 +17,29 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <img src="icons/favicon-32.png" alt="" width="26" height="26" />
-      <div class="brandtext">
-        <div class="armyrow">
-          <select id="armySel" class="armysel" title="Switch army" aria-label="Switch army"></select>
-          <button id="btnNewArmy" class="iconbtn" title="New army">＋</button>
-          <button id="btnDelArmy" class="iconbtn danger" title="Delete this army">🗑</button>
-        </div>
-        <input id="armyName" class="armyname" placeholder="My Army" aria-label="Army name" />
-        <span id="armyPoints" class="points"></span>
-      </div>
+      <img src="icons/favicon-32.png" alt="" width="24" height="24" />
+      <select id="armySel" class="armysel" title="Switch army" aria-label="Switch army"></select>
+      <span id="armyPoints" class="points"></span>
     </div>
     <div class="actions">
-      <button id="btnImport" class="primary">Import list</button>
-      <button id="btnAdd">Add unit</button>
       <div class="turnbox" title="Advance the turn — clears spells that last until your next turn / end of turn">
         <button id="btnPrevTurn" class="turnstep" title="Previous turn">−</button>
         <span class="turnlabel">Turn <b id="turnNum">1</b></span>
         <button id="btnNextTurn" class="primary" title="Next turn (clear temporary effects)">Next ▶</button>
       </div>
-      <button id="btnReset" class="ghost danger" title="Clear everything">Reset</button>
+      <div class="menu">
+        <button id="btnMenu" class="iconbtn" aria-haspopup="true" aria-label="Menu" title="Menu">☰</button>
+        <div id="menuPanel" class="menupanel" hidden>
+          <button id="btnImport">📋 Import list</button>
+          <button id="btnAdd">➕ Add unit</button>
+          <div class="menu-sep"></div>
+          <button id="btnNewArmy">🆕 New army</button>
+          <button id="btnRenameArmy">✎ Rename army</button>
+          <button id="btnDelArmy" class="danger">🗑 Delete army</button>
+          <div class="menu-sep"></div>
+          <button id="btnReset" class="danger">♻ Clear units</button>
+        </div>
+      </div>
     </div>
   </header>
 
