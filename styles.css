@@ -361,3 +361,12 @@ button:focus-visible, a.tag:focus-visible { outline: 2px solid var(--gaze); outl
 /* fleeing toggle (in the tracker row) */
 .fleebtn { background: #170c13; border: 1px solid var(--line); color: var(--muted); padding: 10px 16px; border-radius: 12px; font-weight: 700; }
 .fleebtn.on { background: linear-gradient(180deg, #f0922f, #b5621c); border-color: #7a3f12; color: #1a0d05; box-shadow: 0 2px 0 #6d3a10; }
+
+/* VP status row */
+.statusrow { display: flex; gap: 6px; margin: 8px 0 2px; }
+.stbtn { flex: 1; padding: 9px 6px; font-size: 12.5px; font-weight: 700; background: #170c13; border: 1px solid var(--line); color: var(--muted); }
+.stbtn.flee.on { background: linear-gradient(180deg,#f0922f,#b5621c); border-color:#7a3f12; color:#1a0d05; }
+.stbtn.fled.on { background: linear-gradient(180deg,#b06a2a,#7a3f12); border-color:#5a2f0e; color:#fff; }
+.stbtn.dead.on { background: linear-gradient(180deg,#b23b32,#7a221c); border-color:#5a2020; color:#fff; }
+.badge.b-quarter { color: var(--gaze); border-color: #6a3c12; background: rgba(232,134,42,0.14); }
+.summary.loss { color: var(--gaze); text-align: center; margin-top: -6px; }

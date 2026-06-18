@@ -9,7 +9,7 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v20"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v21"; // shown in the footer; matches the service-worker cache
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
@@ -36,7 +36,7 @@
   let state = activeArmy(); // the army currently being viewed/edited
 
   // Normalise every army, then run shared/data migrations across all of them.
-  for (const a of DB.armies) { if (!a.id) a.id = newId(); if (!a.meta) a.meta = { name: "My Army", points: "" }; if (!a.units) a.units = []; if (!a.turn) a.turn = 1; }
+  for (const a of DB.armies) { if (!a.id) a.id = newId(); if (!a.meta) a.meta = { name: "My Army", points: "" }; if (!a.units) a.units = []; if (!a.turn) a.turn = 1; for (const u of a.units) { if (u.fleeing && !u.status) { u.status = "fleeing"; delete u.fleeing; } } }
   if (!DB.activeId || !activeArmy()) DB.activeId = DB.armies[0].id;
   if (!DB.gaze || DB.gazeVersion !== GAZE_VERSION) { DB.gaze = clone(D.GAZE_REWARDS); DB.gazeVersion = GAZE_VERSION; save(); }
   if (DB.unitVersion !== UNIT_VERSION) {
@@ -165,6 +165,15 @@
     return modelsRemaining(u) <= 0 || (single && (w + sumMountW(u) - (u.woundsLost || 0)) <= 0);
   }
   function sumMountW(u) { const a = u.mountProfile && mountAdd(u.mountProfile.W); return a || 0; }
+  // Status helpers (VP-relevant): gone = destroyed or fled off the table.
+  function unitGone(u) { return u.status === "dead" || u.status === "fled" || unitDead(u); }
+  function unitQuarter(u) {
+    const single = u.isChar || u.models <= 1;
+    if (!single) return modelsRemaining(u) > 0 && modelsRemaining(u) <= Math.floor(u.models * 0.25);
+    const w = (num((u.profile && u.profile.W)) || 1) + sumMountW(u);
+    return w > 1 && (w - (u.woundsLost || 0)) > 0 && (w - (u.woundsLost || 0)) <= Math.floor(w * 0.25);
+  }
+  function hasCmd(u, re) { return re.test((u.options || []).join(" ")); }
 
   // Build a link to a special rule's page on tow.whfb.app (parentheticals stripped).
   function ruleLookupUrl(name) {
@@ -217,8 +226,19 @@
     const models = state.units.reduce((s, u) => s + (unitDead(u) ? 0 : modelsRemaining(u)), 0);
     const parts = [(total - destroyed) + "/" + total + " units", models + " models"];
     if (state.meta.points) parts.push(state.meta.points + " pts");
-    if (destroyed) parts.push(destroyed + " destroyed");
     root.append(el("div", { class: "summary muted small" }, parts.join("  ·  ")));
+
+    // VP-relevant losses (what the foe scores from your army)
+    const goneN = state.units.filter(unitGone).length;
+    const fleeN = state.units.filter((u) => u.status === "fleeing" && !unitGone(u)).length;
+    const qN = state.units.filter((u) => !unitGone(u) && u.status !== "fleeing" && unitQuarter(u)).length;
+    const loss = [];
+    if (goneN) loss.push(goneN + " destroyed/fled");
+    if (fleeN) loss.push(fleeN + " fleeing");
+    if (qN) loss.push(qN + " quartered");
+    if (state.units.some((u) => hasCmd(u, /general/i) && (unitGone(u) || u.status === "fleeing"))) loss.push("General down");
+    if (state.units.some((u) => hasCmd(u, /battle standard bearer/i) && (unitGone(u) || u.status === "fleeing"))) loss.push("BSB down");
+    if (loss.length) root.append(el("div", { class: "summary loss small" }, "⚠ Foe scores: " + loss.join("  ·  ")));
 
     const cats = ["Characters", "Core", "Special", "Rare", "Allies"];
     const order = {}; cats.forEach((c, i) => (order[c] = i));
@@ -261,9 +281,14 @@
     const wmax = num(base.W) || 1;
     const wrem = Math.max(0, wmax - (u.woundsLost || 0));
     const remModels = modelsRemaining(u);
-    const dead = remModels <= 0 || (isSingle && wrem <= 0);
+    const multiWound = wmax > 1;
+    const status = u.status || null;
+    const casualtyDead = remModels <= 0 || (isSingle && wrem <= 0);
+    const gone = casualtyDead || status === "dead" || status === "fled";
+    const fleeing = status === "fleeing";
+    const quarter = unitQuarter(u);
     const half = !isSingle && remModels > 0 && remModels <= Math.floor(u.models / 2);
-    const card = el("div", { class: "card mark-" + (u.mark || "none") + (dead ? " dead" : "") + (u.fleeing ? " fleeing" : "") + (u.collapsed ? " collapsed" : "") });
+    const card = el("div", { class: "card mark-" + (u.mark || "none") + (gone ? " dead" : "") + (fleeing ? " fleeing" : "") + (u.collapsed ? " collapsed" : "") });
 
     // header
     const caret = el("button", { class: "caret", "aria-label": u.collapsed ? "Expand" : "Collapse", onclick: () => { u.collapsed = !u.collapsed; save(); render(); } }, u.collapsed ? "▸" : "▾");
@@ -276,9 +301,10 @@
 
     // status badges
     const badges = [];
-    if (dead) badges.push(el("span", { class: "badge b-dead" }, "Destroyed"));
-    if (u.fleeing && !dead) badges.push(el("span", { class: "badge b-flee" }, "⚑ Fleeing"));
-    if (half && !dead && !u.fleeing) badges.push(el("span", { class: "badge b-half" }, "½ strength"));
+    if (gone) badges.push(el("span", { class: "badge b-dead" }, status === "fled" ? "Fled off" : "Destroyed"));
+    else if (fleeing) badges.push(el("span", { class: "badge b-flee" }, "⚑ Fleeing"));
+    else if (quarter) badges.push(el("span", { class: "badge b-quarter" }, "¼ strength · ½ VP"));
+    else if (half) badges.push(el("span", { class: "badge b-half" }, "½ strength"));
     if (badges.length) card.append(el("div", { class: "badges" }, badges));
 
     // stat line (always shown)
@@ -332,7 +358,6 @@
 
     // casualties / wounds tracker (always shown — the core live control)
     const track = el("div", { class: "track" });
-    const multiWound = num(base.W) > 1;
     if (!isSingle) {
       track.append(stepper("Models", remModels, u.models,
         () => { if (u.modelsLost > 0) { u.modelsLost--; save(); render(); } },
@@ -345,8 +370,15 @@
         () => { if ((u.woundsLost || 0) < wmax) { u.woundsLost = (u.woundsLost || 0) + 1; save(); render(); } },
         (n) => { u.woundsLost = Math.max(0, Math.min(wmax, wmax - n)); save(); render(); }));
     }
-    track.append(el("button", { class: "fleebtn" + (u.fleeing ? " on" : ""), onclick: () => { u.fleeing = !u.fleeing; save(); render(); } }, u.fleeing ? "⚑ Fleeing" : "⚑ Flee"));
     card.append(track);
+
+    // VP status — Fleeing / Fled off / Dead (mutually exclusive)
+    const setStatus = (s) => { u.status = (u.status === s) ? null : s; save(); render(); };
+    card.append(el("div", { class: "statusrow" }, [
+      el("button", { class: "stbtn flee" + (status === "fleeing" ? " on" : ""), onclick: () => setStatus("fleeing") }, "⚑ Fleeing"),
+      el("button", { class: "stbtn fled" + (status === "fled" ? " on" : ""), onclick: () => setStatus("fled") }, "↩ Fled off"),
+      el("button", { class: "stbtn dead" + (status === "dead" ? " on" : ""), onclick: () => setStatus("dead") }, "☠ Dead"),
+    ]));
 
     if (u.collapsed) return card; // compact view stops here
 
@@ -764,7 +796,7 @@
     if (!confirm("Start a new battle for “" + (state.meta.name || "this army") + "”?\nClears wounds, casualties, Gaze rewards and spells (keeps the roster, marks & items).")) return;
     for (const u of state.units) {
       u.modelsLost = 0; u.woundsLost = 0; u.mountWoundsLost = 0;
-      u.rewards = []; u.effects = []; u.fleeing = false;
+      u.rewards = []; u.effects = []; u.status = null;
     }
     state.turn = 1;
     save(); render();
@@ -817,7 +849,7 @@
       "<p class='muted small'>A live battle tracker for Warriors of Chaos. Everything saves on this device.</p>" +
       "<h4>Stats</h4><p class='small'>Each unit shows its live profile. A changed characteristic turns <b style='color:#69c98a'>green ▲</b> when improved and <b style='color:#e0685c'>red ▼</b> when worsened, with the original value beneath. Characteristics cap at 10.</p>" +
       "<h4>Extra lines</h4><p class='small'>🐎 <b>Mount</b> shows the mount's own profile; its <b>(+N)</b> bonuses are already folded into the rider above. <b>Ch ★</b> shows only the champion's differing stats.</p>" +
-      "<h4>Casualties</h4><p class='small'><b>−</b> takes a wound / removes a model, <b>+</b> restores. Tap the number to set it exactly. Badges flag <b>½ strength</b>, <b>Fleeing</b> (⚑ toggle) and <b>Destroyed</b>.</p>" +
+      "<h4>Casualties &amp; status</h4><p class='small'><b>−</b> takes a wound / removes a model, <b>+</b> restores. Tap the number to set it exactly. The <b>⚑ Fleeing / ↩ Fled off / ☠ Dead</b> buttons set a unit's status for Victory Points; badges flag <b>¼ strength</b> (worth ½ VP), ½ strength, Fleeing, Fled and Destroyed. The summary lists what the foe scores from your losses (incl. General / BSB down).</p>" +
       "<h4>Turn</h4><p class='small'><b>Next ▶</b> advances the turn and clears spells lasting “until your next turn / end of turn”. Lasting Gaze rewards, items and remains-in-play spells stay.</p>" +
       "<h4>Gaze &amp; Spells</h4><p class='small'>👁 <b>Gaze</b> (characters with the rule): roll a D6 or pick a result. ✦ <b>Spell</b>: pick a lore spell or building block; augments/hexes change stats live. Magic items from your imported list apply automatically (shown as ⚜ chips).</p>" +
       "<h4>Armies</h4><p class='small'>Use the dropdown to switch armies; the ☰ menu has Import, New / Rename / Delete, New battle (reset combat state), and <b>Backup / Restore</b> to a file.</p>" +
