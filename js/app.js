@@ -9,7 +9,7 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v24"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v25"; // shown in the footer; matches the service-worker cache
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
@@ -88,6 +88,7 @@
     const base = foldMount(prof, unit.mountProfile);
     const eff = {};
     for (const k of D.STATS) {
+      if (isRandom(base[k])) { eff[k] = base[k]; continue; } // keep dice expressions intact
       const n = parseInt(base[k], 10);
       eff[k] = isNaN(n) ? (base[k] == null ? "" : base[k]) : n;
     }
@@ -149,6 +150,29 @@
     return v > 6 ? null : v;
   }
   function num(v) { const n = parseInt(v, 10); return isNaN(n) ? "" : n; }
+  // Random characteristic helpers (e.g. "2D6+1", "D6", "D3", "3D6").
+  function isRandom(v) { return typeof v === "string" && /[dD]\d/.test(v); }
+  function rollExpr(s) {
+    let total = 0, any = false;
+    String(s).replace(/(\d*)\s*[dD](\d+)\s*([+-]\s*\d+)?/g, (m, n, sides, mod) => {
+      any = true;
+      const count = n ? parseInt(n, 10) : 1;
+      for (let i = 0; i < count; i++) total += 1 + Math.floor(Math.random() * parseInt(sides, 10));
+      if (mod) total += parseInt(mod.replace(/\s/g, ""), 10);
+      return m;
+    });
+    return any ? total : null;
+  }
+  // Compulsory rules to remind about at the start of a turn.
+  const REMINDERS = [
+    [/stupidity/i, "Stupidity test"],
+    [/random movement/i, "Random Movement"],
+    [/\bfrenzy\b/i, "Frenzy (restrain or charge)"],
+    [/impetuous/i, "Impetuous (must charge if able)"],
+    [/unstable/i, "Unstable"],
+    [/wilful beast/i, "Wilful Beast (monster reaction)"],
+    [/animosity/i, "Animosity"],
+  ];
   function findReward(rid) {
     if (typeof rid === "object") return rid; // inline custom reward
     return DB.gaze.find((r) => r.id === rid);
@@ -307,9 +331,12 @@
     else if (half) badges.push(el("span", { class: "badge b-half" }, "½ strength"));
     if (badges.length) card.append(el("div", { class: "badges" }, badges));
 
-    // stat line (always shown)
+    // stat line (always shown); rolled random values (e.g. Spawn M/A) display in place
     const statsRow = el("div", { class: "stats" });
-    for (const k of D.STATS) statsRow.append(statCell(k, eff[k], base[k]));
+    for (const k of D.STATS) {
+      if (isRandom(base[k]) && u.rolled && u.rolled[k] != null) statsRow.append(statCell(k, u.rolled[k], base[k]));
+      else statsRow.append(statCell(k, eff[k], base[k]));
+    }
     statsRow.append(statCell("Sv", eff.Sv ? eff.Sv + "+" : "–", base.Sv ? base.Sv + "+" : "", true));
     statsRow.append(statCell("Wd", eff.Ward ? eff.Ward + "+" : "–", base.Ward ? base.Ward + "+" : "", true));
     card.append(statsRow);
@@ -365,6 +392,14 @@
     if (isSingle || multiWound) {
       track.append(stepper(u.mountProfile ? "Wounds*" : "Wounds", wrem, wmax, null, null,
         (n) => { u.woundsLost = Math.max(0, Math.min(wmax, wmax - n)); save(); render(); }, true));
+    }
+    const randomStats = D.STATS.filter((k) => isRandom(base[k]));
+    if (randomStats.length) {
+      track.append(el("button", { class: "rollrand", title: "Roll this unit's random values for the turn", onclick: () => {
+        u.rolled = u.rolled || {};
+        for (const k of randomStats) u.rolled[k] = rollExpr(base[k]);
+        save(); render();
+      } }, "🎲 Roll " + randomStats.join("/")));
     }
     card.append(track);
 
@@ -783,10 +818,27 @@
       const before = (u.effects || []).length;
       u.effects = (u.effects || []).filter((e) => !/next turn|end of turn/i.test(e.duration || ""));
       n += before - u.effects.length;
+      u.rolled = null; // clear rolled random values for the new turn
     }
     state.turn = (state.turn || 1) + 1;
     save(); render();
     flash("Turn " + state.turn + (n ? " — cleared " + n + " temporary effect(s)" : ""));
+    // compulsory start-of-turn reminders
+    const rem = [];
+    for (const u of state.units) {
+      if (unitGone(u)) continue;
+      const txt = (u.baseRules || []).join(" ") + " " + (u.notes || "") + " " + (u.mark && D.MARKS[u.mark] ? D.MARKS[u.mark].rules.join(" ") : "");
+      const reasons = REMINDERS.filter(([re]) => re.test(txt)).map(([, label]) => label);
+      if (reasons.length) rem.push({ name: u.name || "Unit", reasons });
+    }
+    if (rem.length) {
+      const body = el("div", {});
+      body.append(el("p", { class: "muted small" }, "Things your units owe at the start of Turn " + state.turn + ":"));
+      const list = el("div", { class: "remlist" });
+      for (const r of rem) list.append(el("div", { class: "remrow" }, [el("b", {}, r.name), el("span", { class: "muted small" }, r.reasons.join(" · "))]));
+      body.append(list);
+      openModal("⚔ Turn " + state.turn + " — checklist", body, [el("button", { class: "primary", onclick: closeModal }, "Got it")]);
+    }
   }
   function flash(msg) {
     const t = el("div", { class: "toast" }, msg);
@@ -854,7 +906,8 @@
       "<h4>Stats</h4><p class='small'>Each unit shows its live profile. A changed characteristic turns <b style='color:#69c98a'>green ▲</b> when improved and <b style='color:#e0685c'>red ▼</b> when worsened, with the original value beneath. Characteristics cap at 10.</p>" +
       "<h4>Extra lines</h4><p class='small'>🐎 <b>Mount</b> shows the mount's own profile; its <b>(+N)</b> bonuses are already folded into the rider above. <b>Ch ★</b> shows only the champion's differing stats.</p>" +
       "<h4>Casualties &amp; status</h4><p class='small'><b>−</b> takes a wound / removes a model, <b>+</b> restores. Tap the number to set it exactly. The <b>⚑ Fleeing / ↩ Fled off / ☠ Dead</b> buttons set a unit's status for Victory Points; badges flag <b>¼ strength</b> (worth ½ VP), ½ strength, Fleeing, Fled and Destroyed. The summary lists what the foe scores from your losses (incl. General / BSB down).</p>" +
-      "<h4>Turn</h4><p class='small'><b>Next ▶</b> advances the turn and clears spells lasting “until your next turn / end of turn”. Lasting Gaze rewards, items and remains-in-play spells stay.</p>" +
+      "<h4>Turn</h4><p class='small'><b>Next ▶</b> advances the turn, clears spells lasting “until your next turn / end of turn”, and pops a checklist of compulsory tests your units owe (Stupidity, Frenzy, Random Movement…). Lasting Gaze rewards, items and remains-in-play spells stay.</p>" +
+      "<h4>Random values</h4><p class='small'>Units with random Movement/Attacks (Spawn, Forsaken…) get a <b>🎲 Roll</b> button to roll them for the turn.</p>" +
       "<h4>Gaze &amp; Spells</h4><p class='small'>👁 <b>Gaze</b> (characters with the rule): roll a D6 or pick a result. ✦ <b>Spell</b>: pick a lore spell or building block; augments/hexes change stats live. Magic items from your imported list apply automatically (shown as ⚜ chips).</p>" +
       "<h4>Armies</h4><p class='small'>Use the dropdown to switch armies; the ☰ menu has Import, New / Rename / Delete, New battle (reset combat state), and <b>Backup / Restore</b> to a file.</p>" +
       "<p class='muted small'>Tap any special-rule tag to open its page on tow.whfb.app. Unofficial fan tool; values are editable defaults — verify against your book.</p>";

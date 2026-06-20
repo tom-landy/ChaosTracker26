@@ -379,3 +379,17 @@ button:focus-visible, a.tag:focus-visible { outline: 2px solid var(--gaze); outl
 /* the joke button */
 .act.daddy { border-color: #6a2f56; color: #e6a3d0; }
 .act.daddy:hover { border-color: #d063a6; }
+
+/* random value roller */
+.rollrand { background: #170c13; border: 1px solid var(--line); color: var(--gaze); padding: 10px 14px; border-radius: 12px; font-weight: 700; }
+
+/* start-of-turn reminder checklist */
+.remlist { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.remrow { display: flex; flex-direction: column; gap: 1px; background: #170c13; border: 1px solid var(--line); border-left: 3px solid var(--gaze); border-radius: 8px; padding: 8px 10px; }
+.remrow b { color: var(--ink); }
+
+/* tablet / landscape: two-column roster */
+@media (min-width: 860px) {
+  .roster { max-width: 1180px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; align-items: start; }
+  .roster .cat, .roster .summary, .roster .empty { grid-column: 1 / -1; }
+}
