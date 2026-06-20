@@ -9,7 +9,7 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v23"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v24"; // shown in the footer; matches the service-worker cache
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
@@ -424,6 +424,11 @@
     const canGaze = !!(def && def.gaze) || /gaze of the gods/i.test((u.baseRules || []).join(" ") + " " + (u.notes || ""));
     card.append(el("div", { class: "u-actions" }, [
       canGaze ? el("button", { class: "act gaze", onclick: () => gazeModal(u) }, "👁 Gaze") : null,
+      canGaze ? el("button", { class: "act daddy", title: "Summon the Dark Gods' favour", onclick: () => {
+        const roll = 1 + Math.floor(Math.random() * 6);
+        const r = DB.gaze.find((x) => rollMatches(x.roll, roll)) || DB.gaze[Math.min(DB.gaze.length - 1, roll - 1)];
+        if (r) { flash("📞 Daddy answers — D6 " + roll + " → " + r.name); applyReward(u, r); }
+      } }, "📞 Call Daddy") : null,
       el("button", { class: "act spell", onclick: () => effectModal(u) }, "✦ Spell"),
       el("button", { class: "act", onclick: () => editModal(u) }, "✎ Edit"),
     ]));
