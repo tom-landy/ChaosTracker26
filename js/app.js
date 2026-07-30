@@ -9,7 +9,7 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v27"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v28"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-07-30"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -981,7 +981,16 @@
     render();
 
     if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-      navigator.serviceWorker.register("service-worker.js").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js").then((reg) => {
+        // check for a newer version whenever the app is opened/focused
+        reg.update().catch(() => {});
+        window.addEventListener("focus", () => reg.update().catch(() => {}));
+      }).catch(() => {});
+      // when a new service worker takes control, reload once so the latest UI shows
+      let reloading = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (reloading) return; reloading = true; location.reload();
+      });
     }
   }
   document.addEventListener("DOMContentLoaded", init);
