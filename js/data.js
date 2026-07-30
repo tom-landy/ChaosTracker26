@@ -32,12 +32,12 @@
     { name: "Aspiring Champion", category: "Characters", isChar: true, gaze: true, profile: p(4, 5, 3, 4, 4, 2, 4, 3, 8, { Sv: 5 }), note: "Chaos Armour (5+), Gaze of the Gods" },
     { name: "Sorcerer Lord", category: "Characters", isChar: true, gaze: true, profile: p(4, 5, 3, 4, 4, 3, 4, 3, 8, { Sv: 5 }), note: "Wizard. Chaos Armour (5+), Gaze of the Gods, Lore of Chaos" },
     { name: "Exalted Sorcerer", category: "Characters", isChar: true, gaze: true, profile: p(4, 4, 3, 4, 4, 2, 3, 2, 8, { Sv: 6 }), note: "Wizard. Chaos Armour (5+), Gaze of the Gods, Lore of Chaos" },
-    { name: "Daemon Prince", category: "Characters", isChar: true, gaze: true, profile: p(6, 7, 5, 6, 5, 4, 7, 5, 9, { Sv: 4 }), note: "Wizard. Chaos Armour (4+), Gaze of the Gods, Regeneration (5+), Fear, Unbreakable" },
+    { name: "Daemon Prince", category: "Characters", isChar: true, gaze: true, profile: p(6, 7, 5, 6, 5, 5, 7, 5, 9, { Sv: 4 }), note: "Wizard. Chaos Armour (4+), Gaze of the Gods, Regeneration (5+), Fear, Unbreakable, Stomp Attacks (D3+1)" },
     { name: "Marauder Tribe Chieftain", category: "Characters", isChar: true, gaze: true, profile: p(4, 5, 3, 4, 4, 2, 4, 3, 8, { Sv: 6 }), note: "Chaos Armour (6+), Gaze of the Gods, Warband" },
     { name: "Chaos Warhound Handler", category: "Characters", isChar: true, profile: p(5, 5, 3, 4, 4, 1, 4, 1, 8, { Sv: 5 }), note: "Handler, Loner, Vanguard" },
 
     // Core / regiments
-    { name: "Chaos Warriors", category: "Core", profile: p(4, 5, 3, 4, 4, 1, 4, 1, 8, { Sv: 5 }), champ: { A: 2 }, champName: "Champion", note: "Ensorcelled Weapons, Close Order" },
+    { name: "Chaos Warriors", category: "Core", profile: p(4, 5, 3, 4, 4, 1, 4, 1, 8, { Sv: 5 }), champ: { A: 2 }, champName: "Champion", note: "Ensorcelled Weapons, Close Order, Chaos Armour (6+), Furious Charge" },
     { name: "Chaos Marauders", category: "Core", profile: p(4, 4, 3, 3, 3, 1, 3, 1, 6, { Sv: 6 }), champ: { A: 2, Ld: 7 }, champName: "Headman", note: "Horde, Shieldwall, Warband" },
     { name: "Marauder Horsemen", category: "Core", profile: p(8, 4, 3, 3, 3, 1, 3, 1, 6, { Sv: 5 }), champ: { A: 2, Ld: 7 }, champName: "Horsemaster", note: "Warhorse (M8). Fast Cavalry, Fire & Flee" },
     { name: "Chaos Warhounds", category: "Core", profile: p(7, 4, 0, 3, 3, 1, 3, 1, 6, { Sv: null }), note: "Loner, Open Order, Swiftstride" },
@@ -45,18 +45,18 @@
     { name: "Marauder Tribe Huscarls", category: "Core", profile: p(8, 4, 3, 3, 4, 1, 3, 1, 7, { Sv: 6 }), champ: { A: 2, Ld: 8 }, champName: "First Sword", note: "Warhorse (M8). Counter Charge, Furious Charge" },
 
     // Special / Rare
-    { name: "Chaos Knights", category: "Special", profile: p(7, 5, 3, 4, 4, 1, 4, 1, 8, { Sv: 3 }), champ: { A: 2 }, champName: "Champion", note: "Chaos Steed (M7). heavy+shield+barding" },
-    { name: "Chosen Chaos Warriors", category: "Special", profile: p(4, 5, 3, 4, 4, 1, 4, 2, 9, { Sv: 5 }), champ: { A: 3 }, champName: "Champion", note: "Chaos Armour (6+), Stubborn" },
+    { name: "Chaos Knights", category: "Special", profile: p(7, 5, 3, 4, 4, 1, 4, 1, 8, { Sv: 3 }), champ: { A: 2 }, champName: "Champion", note: "Chaos Steed (M7). heavy+shield+barding. Chaos Armour (6+), Counter Charge" },
+    { name: "Chosen Chaos Warriors", category: "Special", profile: p(4, 5, 3, 4, 4, 1, 4, 2, 9, { Sv: 5 }), champ: { A: 3 }, champName: "Champion", note: "Chaos Armour (6+), Stubborn, Furious Charge" },
     { name: "Chosen Chaos Knights", category: "Special", profile: p(7, 5, 3, 4, 4, 1, 4, 2, 9, { Sv: 3 }), champ: { A: 3 }, champName: "Champion", note: "Chaos Steed (M7). Chaos Armour (6+), Stubborn" },
     { name: "Chaos Chariot", category: "Special", isChar: false, monster: true, profile: p(7, null, null, 5, 5, 4, null, null, null, { Sv: 3 }), note: "Charioteers WS5 A1, Steeds A1. Impact Hits (D6+1)" },
     { name: "Chosen Chaos Chariot", category: "Special", isChar: false, monster: true, profile: p(7, null, null, 5, 5, 4, null, null, null, { Sv: 3 }), note: "Charioteers WS5 A2 Ld9. Impact Hits (D6+1)" },
     { name: "Gorebeast Chariot", category: "Special", isChar: false, monster: true, profile: p(6, null, null, 5, 5, 4, null, null, null, { Sv: 3 }), note: "Gorebeast S5 A3; Charioteers WS5 A1. Impact Hits (D6+2)" },
     { name: "Chaos Ogres", category: "Special", profile: p(6, 3, 2, 4, 4, 3, 2, 3, 7, { Sv: 5 }), champ: { A: 4 }, champName: "Champion", note: "Armour Bane (1), Fear, Impact Hits (1)" },
     { name: "Forsaken", category: "Special", profile: p(5, 4, 0, 4, 4, 1, 3, "D3", 8, { Sv: 5 }), note: "Random Attacks (D3). Furious Charge, Impetuous, Stubborn" },
-    { name: "Skin Wolves", category: "Special", profile: p(7, 5, null, 4, 4, 3, 4, 3, 7, { Sv: null }), champ: { A: 4 }, champName: "Jarl", note: "Regeneration (5+), Skirmishers, Primal Fury" },
-    { name: "Chaos Trolls", category: "Rare", profile: p(6, 3, 1, 5, 4, 3, 2, 3, 4, { Sv: 6 }), note: "Regeneration (5+), Stupidity, Flammable, Fear" },
+    { name: "Skin Wolves", category: "Special", profile: p(7, 5, null, 4, 4, 3, 4, 3, 7, { Sv: null }), champ: { A: 4 }, champName: "Jarl", note: "Regeneration (5+), Skirmishers, Primal Fury, Fear" },
+    { name: "Chaos Trolls", category: "Rare", profile: p(6, 3, 1, 5, 4, 3, 2, 3, 6, { Sv: 6 }), note: "Regeneration (5+), Stupidity, Flammable, Fear, Motley Crew" },
     { name: "Chaos Spawn", category: "Rare", isChar: false, monster: true, profile: p("2D6+1", 3, 0, 4, 5, 3, 3, "D6", 10, { Sv: 5 }), note: "Random Attacks/Movement, Unbreakable, Fear" },
-    { name: "Chimera", category: "Rare", isChar: false, monster: true, profile: p(6, 4, 0, 6, 5, 4, 3, 6, 5, { Sv: 5 }), note: "Fly (10), Terror, Large Target, Armour Bane (2)" },
+    { name: "Chimera", category: "Rare", isChar: false, monster: true, profile: p(6, 4, 0, 6, 5, 5, 3, 6, 5, { Sv: 5 }), note: "Fly (10), Terror, Large Target, Armour Bane (2), Stomp Attacks (D3)" },
     { name: "Gigantic Spawn of Chaos", category: "Rare", isChar: false, monster: true, profile: p("3D6", 3, 0, 6, 6, 6, 3, "D6+1", 10, { Sv: 5 }), note: "Behemoth. Random Attacks/Movement, Terror, Unbreakable" },
     { name: "Hellcannon", category: "Rare", isChar: false, monster: true, profile: p(3, 4, 3, 5, 6, 5, 1, 5, 4, { Sv: 4 }), note: "Behemoth. Dwarf Handlers (WS4 A1). Terror, Impact Hits (D6)" },
     { name: "Warpfire Dragon", category: "Rare", isChar: false, monster: true, profile: p(6, 6, 0, 6, 6, 6, 3, 5, 8, { Sv: 4 }), note: "Behemoth. Fly (10), Terror, Lore of Chaos, Magic Resistance (-2)" },
@@ -85,7 +85,7 @@
   const MOUNTS = [
     { name: "Chaos Steed", profile: { M: 7, WS: 3, BS: null, S: 4, T: null, W: null, I: 3, A: 1, Ld: null }, note: "Counter Charge, First Charge, Swiftstride; barding" },
     { name: "Warhorse", profile: { M: 8, WS: 3, BS: null, S: 3, T: null, W: null, I: 3, A: 1, Ld: null }, note: "Counter Charge, Fast Cavalry, Swiftstride" },
-    { name: "Daemonic Mount", profile: { M: 8, WS: 4, BS: null, S: 5, T: null, W: "+1", I: 3, A: 2, Ld: null }, note: "Armour Bane (1), Fear, Magical Attacks, Mark of Chaos" },
+    { name: "Daemonic Mount", profile: { M: 8, WS: 4, BS: null, S: 5, T: null, W: "+1", I: 3, A: 2, Ld: null }, note: "Armour Bane (1), Fear, Magical Attacks, Counter Charge, Mark of Chaos; barding" },
     { name: "Chaos Dragon", profile: { M: 6, WS: 6, BS: null, S: 7, T: "+1", W: "+6", I: 4, A: 6, Ld: null }, note: "Fly (10), Impetuous, Large Target, Stomp Attacks (D6), Swiftstride, Terror, Two-headed Dragon" },
     { name: "Manticore", profile: { M: 6, WS: 5, BS: null, S: 5, T: null, W: "+4", I: 5, A: 4, Ld: null }, note: "Fly (9), Large Target, Stomp Attacks (D3), Swiftstride, Terror, Wilful Beast" },
   ];
@@ -314,7 +314,7 @@
     { id: "arc-skull-katam", cat: "arcane", name: "Skull of Katam", mods: {}, rules: ["+1 Casting for bearer & any Wizard within 3\" (friend or foe)"] },
     { id: "arc-sceptre-power", cat: "arcane", name: "Sceptre of Power", mods: {}, rules: ["+1 Casting/Dispel; on a natural double, bearer takes a S10 AP -3 hit"] },
     { id: "arc-grimoire", cat: "arcane", name: "Grimoire of Ogvold", mods: {}, rules: ["Knows all 7 spells of chosen lore; casts up to Level per turn"] },
-    { id: "arc-infernal-puppet", cat: "arcane", name: "Infernal Puppet", mods: {}, rules: ["Enemy Wizard within 15\" rolls an extra D6 to cast, discards highest"] },
+    { id: "arc-infernal-puppet", cat: "arcane", name: "Infernal Puppet", mods: {}, rules: ["If not fleeing or in combat: an enemy Wizard casting within 15\" rolls an extra D6 and discards the highest"] },
     { id: "arc-tome-dark-gods", cat: "arcane", name: "Tome of the Dark Gods", mods: {}, rules: ["Undivided: may swap spells for any Lore of Chaos mark spells"] },
     { id: "arc-spell-familiar", cat: "arcane", name: "Spell Familiar", mods: {}, rules: ["Knows one extra spell (does not raise Level)"] },
     // Chaotic Traits

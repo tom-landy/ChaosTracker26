@@ -9,10 +9,10 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v25"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v26"; // shown in the footer; matches the service-worker cache
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
-  const UNIT_VERSION = 2;  // bump to re-apply corrected unit profiles to saved armies
+  const UNIT_VERSION = 3;  // bump to re-apply corrected unit profiles to saved armies
   const ITEMS_VERSION = 1; // bump to re-link items/traits from wargear on saved armies
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
