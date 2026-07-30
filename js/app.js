@@ -9,11 +9,11 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v28"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v29"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-07-30"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
-  const UNIT_VERSION = 3;  // bump to re-apply corrected unit profiles to saved armies
+  const UNIT_VERSION = 4;  // bump to re-apply corrected unit profiles to saved armies
   const ITEMS_VERSION = 1; // bump to re-link items/traits from wargear on saved armies
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
@@ -414,12 +414,20 @@
 
     if (u.collapsed) return card; // compact view stops here
 
-    // rules / tags
-    const hasTags = rules.length || (u.baseRules || []).length || u.mount;
+    // rules / tags — merge the unit's canonical special rules (correct per-unit
+    // values, e.g. Chaos Armour (6+)) with any rules from the import, deduped by
+    // rule name so the canonical value wins.
+    const ruleTags = [];
+    const seenRule = new Set();
+    const ruleKey = (r) => String(r).toLowerCase().replace(/\([^)]*\)/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    const addRule = (r) => { const k = ruleKey(r); if (!k || seenRule.has(k)) return; seenRule.add(k); ruleTags.push(r); };
+    for (const r of (def && def.rules) || []) addRule(r);
+    for (const r of (u.baseRules || [])) addRule(r);
+    const hasTags = ruleTags.length || rules.length || u.mount;
     if (hasTags) {
       const tags = el("div", { class: "tags" });
       if (u.mount) tags.append(el("span", { class: "tag t-mount" }, "🐎 " + u.mount));
-      for (const r of (u.baseRules || [])) tags.append(el("a", { class: "tag t-rule link", href: ruleLookupUrl(r), target: "_blank", rel: "noopener noreferrer", title: "Look up “" + r + "” on tow.whfb.app" }, r));
+      for (const r of ruleTags) tags.append(el("a", { class: "tag t-rule link", href: ruleLookupUrl(r), target: "_blank", rel: "noopener noreferrer", title: "Look up “" + r + "” on tow.whfb.app" }, r));
       for (const r of rules) tags.append(el("span", { class: "tag t-" + r.src }, r.text));
       card.append(tags);
     }
