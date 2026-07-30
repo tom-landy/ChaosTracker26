@@ -9,7 +9,8 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v26"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v27"; // shown in the footer; matches the service-worker cache
+  const APP_DATE = "2026-07-30"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 3;  // bump to re-apply corrected unit profiles to saved armies
@@ -964,7 +965,7 @@
     $("#btnBackup").addEventListener("click", backup);
     $("#btnRestore").addEventListener("click", restore);
     $("#btnHelp").addEventListener("click", helpModal);
-    const ver = $("#appVer"); if (ver) ver.textContent = "ChaosTracker26 · " + APP_VERSION;
+    const ver = $("#appVer"); if (ver) ver.textContent = "ChaosTracker26 · " + APP_VERSION + " · " + APP_DATE;
     // menu open/close
     const menuPanel = $("#menuPanel");
     const toggleMenu = (open) => { if (!menuPanel) return; const show = open == null ? menuPanel.hasAttribute("hidden") : open; if (show) menuPanel.removeAttribute("hidden"); else menuPanel.setAttribute("hidden", ""); };
