@@ -1,20 +1,20 @@
 # ChaosTracker26 — self-host on Synology Container Manager (or any Docker host).
 #
 # What it does:
-#   • git-sync: clones this public repo into ./site and re-pulls every 5 minutes,
-#     so the site auto-updates whenever new commits are pushed to GitHub.
+#   • git-sync: clones this public repo into a shared volume and re-pulls every
+#     5 minutes, so the site auto-updates whenever new commits are pushed to GitHub.
 #   • web: nginx serving those files on port 8080.
 #
-# One-time setup in DSM (easiest on a laptop — the Container Manager UI is fiddly
-# on a phone):
-#   1. Container Manager → Project → Create.
-#   2. Name it (e.g. chaostracker), pick a folder path (e.g. /docker/chaostracker).
-#   3. Source: "Create docker-compose.yml" and paste this file. Run it.
-#   4. Control Panel → Login Portal → Advanced → Reverse Proxy → point your
+# Uses a NAMED VOLUME (created automatically) rather than a host folder, so there's
+# nothing to pre-create — this avoids the "bind mount ... does not exist" error.
+#
+# Setup in DSM:
+#   1. Container Manager → Project → Create. Name it, pick any folder.
+#   2. Source: "Create docker-compose.yml" and paste this file. Run it.
+#   3. Control Panel → Login Portal → Advanced → Reverse Proxy → point your
 #      hostname at  localhost : 8080  (HTTPS on the front end enables PWA install).
 #
 # After that it's hands-off: pushes to GitHub appear on your Synology within ~5 min.
-# Change SITE_BRANCH below if you ever serve a different branch.
 
 services:
   git-sync:
@@ -25,7 +25,7 @@ services:
       SITE_BRANCH: "claude/old-world-army-tracker-ax824t"
       INTERVAL: "300"   # seconds between update checks
     volumes:
-      - ./site:/site
+      - site:/site
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >
@@ -50,4 +50,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./site:/usr/share/nginx/html:ro
+      - site:/usr/share/nginx/html:ro
+
+volumes:
+  site:
