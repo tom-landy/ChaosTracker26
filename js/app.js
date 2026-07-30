@@ -9,7 +9,7 @@
   const D = window.WOC_DATA;
   const P = window.WOC_PARSER;
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v29"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v30"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-07-30"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -84,9 +84,19 @@
 
   // Sum numeric mods from mark + rewards + effects onto the (mount-folded) base.
   // Non-numeric characteristics (e.g. "D3", "2D6+1") are passed through untouched.
+  // Chaos Armour is a Ward save — read its (X+) value from the unit's rules.
+  function chaosArmourWard(unit) {
+    const def = P.matchUnit(unit.name);
+    const txt = [].concat((def && def.rules) || [], unit.baseRules || []).join(" ");
+    const m = txt.match(/chaos armour[^(]*\((\d)\s*\+\)/i);
+    return m ? parseInt(m[1], 10) : null;
+  }
+
   function effective(unit, baseOverride) {
     const prof = baseOverride ? Object.assign({}, unit.profile, baseOverride) : unit.profile;
     const base = foldMount(prof, unit.mountProfile);
+    const caw = chaosArmourWard(unit); // Chaos Armour ward is part of the baseline
+    if (caw != null) base.Ward = bestSave(base.Ward, caw);
     const eff = {};
     for (const k of D.STATS) {
       if (isRandom(base[k])) { eff[k] = base[k]; continue; } // keep dice expressions intact
