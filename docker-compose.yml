@@ -1,0 +1,50 @@
+# ChaosTracker26 — self-host on Synology Container Manager (or any Docker host).
+#
+# What it does:
+#   • git-sync: clones this public repo into ./site and re-pulls every 5 minutes,
+#     so the site auto-updates whenever new commits are pushed to GitHub.
+#   • web: nginx serving those files on port 8080.
+#
+# One-time setup in DSM (easiest on a laptop — the Container Manager UI is fiddly
+# on a phone):
+#   1. Container Manager → Project → Create.
+#   2. Name it (e.g. chaostracker), pick a folder path (e.g. /docker/chaostracker).
+#   3. Source: "Create docker-compose.yml" and paste this file. Run it.
+#   4. Control Panel → Login Portal → Advanced → Reverse Proxy → point your
+#      hostname at  localhost : 8080  (HTTPS on the front end enables PWA install).
+#
+# After that it's hands-off: pushes to GitHub appear on your Synology within ~5 min.
+# Change SITE_BRANCH below if you ever serve a different branch.
+
+services:
+  git-sync:
+    image: alpine/git:latest
+    restart: unless-stopped
+    environment:
+      REPO: "https://github.com/tom-landy/ChaosTracker26.git"
+      SITE_BRANCH: "claude/old-world-army-tracker-ax824t"
+      INTERVAL: "300"   # seconds between update checks
+    volumes:
+      - ./site:/site
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        if [ ! -d /site/.git ]; then
+          git clone --depth 1 --branch "$$SITE_BRANCH" "$$REPO" /site;
+        fi;
+        while true; do
+          cd /site &&
+          git fetch --depth 1 origin "$$SITE_BRANCH" &&
+          git reset --hard "origin/$$SITE_BRANCH" || echo "update check failed, will retry";
+          sleep "$$INTERVAL";
+        done
+
+  web:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - git-sync
+    ports:
+      - "8080:80"
+    volumes:
+      - ./site:/usr/share/nginx/html:ro

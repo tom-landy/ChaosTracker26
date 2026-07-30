@@ -72,6 +72,22 @@ go to **Settings → Pages → Build and deployment → Source: GitHub Actions**
 default branch then publishes the app; the workflow can also be run manually. Your app will
 be served at `https://<user>.github.io/<repo>/`.
 
+### Self-host on a Synology (Container Manager) with auto-update
+
+Use the included `docker-compose.yml`. It runs a tiny **git-sync** helper that clones the
+repo and re-pulls every 5 minutes, plus **nginx** serving the app on port 8080 — so any push
+to GitHub appears on your NAS automatically, without touching the Container Manager UI again.
+
+1. **Container Manager → Project → Create.** Name it, choose a folder (e.g. `/docker/chaostracker`).
+2. Source **"Create docker-compose.yml"** → paste the repo's `docker-compose.yml`. Run it.
+3. **Control Panel → Login Portal → Advanced → Reverse Proxy** → point your hostname at
+   `localhost:8080` (the HTTPS front end lets the PWA install).
+
+The one-time setup is much easier on a laptop — DSM's Container Manager screen is awkward on
+a phone. After that it's hands-off; edit `SITE_BRANCH`/`INTERVAL` in the compose to tune it.
+Container Manager itself does **not** poll git and redeploy — the git-sync helper is what
+makes it auto-update.
+
 ## Project layout
 
 ```
