@@ -29,13 +29,16 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >
-        if [ ! -d /site/.git ]; then
-          git clone --depth 1 --branch "$$SITE_BRANCH" "$$REPO" /site;
+        cd /site;
+        if [ ! -d .git ]; then
+          git init -q && (git remote add origin "$$REPO" 2>/dev/null || git remote set-url origin "$$REPO");
         fi;
         while true; do
-          cd /site &&
-          git fetch --depth 1 origin "$$SITE_BRANCH" &&
-          git reset --hard "origin/$$SITE_BRANCH" || echo "update check failed, will retry";
+          if git fetch --depth 1 origin "$$SITE_BRANCH" && git reset --hard FETCH_HEAD && git clean -fdq; then
+            echo "synced $$SITE_BRANCH @ $$(git rev-parse --short HEAD)";
+          else
+            echo "update check failed, will retry";
+          fi;
           sleep "$$INTERVAL";
         done
 
