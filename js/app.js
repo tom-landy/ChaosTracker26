@@ -10,8 +10,8 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v31"; // shown in the footer; matches the service-worker cache
-  const APP_DATE = "2026-07-30"; // release date shown in the footer for a quick freshness check
+  const APP_VERSION = "v32"; // shown in the footer; matches the service-worker cache
+  const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 4;  // bump to re-apply corrected unit profiles to saved armies
