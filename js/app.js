@@ -6,10 +6,11 @@
  */
 (function () {
   "use strict";
-  const D = window.WOC_DATA;
+  let D = window.WOC_DATA; // active faction's data (reassigned per active army)
   const P = window.WOC_PARSER;
+  function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v30"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v31"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-07-30"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -19,7 +20,7 @@
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function rawLoad() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; } }
   function newId() { return "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-  function newArmy(name) { return { id: newId(), meta: { name: name || "My Army", points: "" }, units: [], turn: 1 }; }
+  function newArmy(name) { return { id: newId(), meta: { name: name || "My Army", points: "" }, units: [], turn: 1, faction: "warriors-of-chaos" }; }
 
   // ---- state: a database of armies (all client-side in localStorage) --------
   let DB = (function migrate(raw) {
@@ -37,26 +38,26 @@
   let state = activeArmy(); // the army currently being viewed/edited
 
   // Normalise every army, then run shared/data migrations across all of them.
-  for (const a of DB.armies) { if (!a.id) a.id = newId(); if (!a.meta) a.meta = { name: "My Army", points: "" }; if (!a.units) a.units = []; if (!a.turn) a.turn = 1; for (const u of a.units) { if (u.fleeing && !u.status) { u.status = "fleeing"; delete u.fleeing; } } }
+  for (const a of DB.armies) { if (!a.id) a.id = newId(); if (!a.meta) a.meta = { name: "My Army", points: "" }; if (!a.units) a.units = []; if (!a.turn) a.turn = 1; if (!a.faction) a.faction = "warriors-of-chaos"; for (const u of a.units) { if (u.fleeing && !u.status) { u.status = "fleeing"; delete u.fleeing; } } }
   if (!DB.activeId || !activeArmy()) DB.activeId = DB.armies[0].id;
   if (!DB.gaze || DB.gazeVersion !== GAZE_VERSION) { DB.gaze = clone(D.GAZE_REWARDS); DB.gazeVersion = GAZE_VERSION; save(); }
   if (DB.unitVersion !== UNIT_VERSION) {
-    for (const a of DB.armies) for (const u of a.units) {
-      const def = P.matchUnit(u.name);
+    for (const a of DB.armies) { const fd = factionData(a.faction); for (const u of a.units) {
+      const def = P.matchUnit(u.name, fd);
       if (def) { u.profile = clone(def.profile); u.isChar = !!def.isChar; u.notes = def.note || ""; }
-    }
+    } }
     DB.unitVersion = UNIT_VERSION; save();
   }
   if (DB.mountVersion !== MOUNT_VERSION) {
-    for (const a of DB.armies) for (const u of a.units) {
+    for (const a of DB.armies) { const fd = factionData(a.faction); for (const u of a.units) {
       if (!u.mount) continue;
-      const mdef = D.MOUNT_INDEX[D.norm(u.mount)] || D.MOUNT_INDEX[D.norm(u.mount).replace(/s$/, "")];
+      const mdef = fd.MOUNT_INDEX[fd.norm(u.mount)] || fd.MOUNT_INDEX[fd.norm(u.mount).replace(/s$/, "")];
       if (mdef) { u.mountProfile = clone(mdef.profile); u.mountNote = mdef.note || null; }
-    }
+    } }
     DB.mountVersion = MOUNT_VERSION; save();
   }
   if (DB.itemsVersion !== ITEMS_VERSION) {
-    for (const a of DB.armies) for (const u of a.units) { if (!u.items || !u.items.length) u.items = P.linkItems(u.options || []); }
+    for (const a of DB.armies) { const fd = factionData(a.faction); for (const u of a.units) { if (!u.items || !u.items.length) u.items = P.linkItems(u.options || [], fd); } }
     DB.itemsVersion = ITEMS_VERSION; save();
   }
   state = activeArmy();
@@ -86,7 +87,7 @@
   // Non-numeric characteristics (e.g. "D3", "2D6+1") are passed through untouched.
   // Chaos Armour is a Ward save — read its (X+) value from the unit's rules.
   function chaosArmourWard(unit) {
-    const def = P.matchUnit(unit.name);
+    const def = P.matchUnit(unit.name, D);
     const txt = [].concat((def && def.rules) || [], unit.baseRules || []).join(" ");
     const m = txt.match(/chaos armour[^(]*\((\d)\s*\+\)/i);
     return m ? parseInt(m[1], 10) : null;
@@ -237,6 +238,8 @@
   }
 
   function render() {
+    D = factionData(state.faction); // switch data + theme to the active army's faction
+    document.body.setAttribute("data-theme", D.theme || "chaos");
     $("#armyPoints").textContent = state.meta.points ? state.meta.points + " pts" : "";
     const tb = $("#turnNum"); if (tb) tb.textContent = state.turn || 1;
     const pv = $("#btnPrevTurn"); if (pv) pv.disabled = (state.turn || 1) <= 1;
@@ -311,7 +314,7 @@
 
   function unitCard(u) {
     const { eff, base, rules } = effective(u);
-    const def = P.matchUnit(u.name);
+    const def = P.matchUnit(u.name, D);
     const isSingle = u.isChar || u.models <= 1;
     const wmax = num(base.W) || 1;
     const wrem = Math.max(0, wmax - (u.woundsLost || 0));
@@ -328,9 +331,12 @@
     // header
     const caret = el("button", { class: "caret", "aria-label": u.collapsed ? "Expand" : "Collapse", onclick: () => { u.collapsed = !u.collapsed; save(); render(); } }, u.collapsed ? "▸" : "▾");
     const title = el("input", { class: "u-name", value: u.name, placeholder: "Unit name", onchange: (e) => { u.name = e.target.value; save(); } });
-    const markSel = el("select", { class: "mark", onchange: (e) => { u.mark = e.target.value || null; save(); render(); } });
-    markSel.append(el("option", { value: "" }, "No mark"));
-    for (const k in D.MARKS) markSel.append(el("option", { value: k, selected: u.mark === k ? "selected" : null }, D.MARKS[k].name));
+    let markSel = null;
+    if (D.hasMarks && D.MARKS && Object.keys(D.MARKS).length) {
+      markSel = el("select", { class: "mark", onchange: (e) => { u.mark = e.target.value || null; save(); render(); } });
+      markSel.append(el("option", { value: "" }, "No mark"));
+      for (const k in D.MARKS) markSel.append(el("option", { value: k, selected: u.mark === k ? "selected" : null }, D.MARKS[k].name));
+    }
     const delBtn = el("button", { class: "icon danger", title: "Remove unit", onclick: () => { if (confirm("Remove " + (u.name || "unit") + "?")) { state.units = state.units.filter((x) => x !== u); save(); render(); } } }, "✕");
     card.append(el("div", { class: "u-head" }, [caret, title, markSel, delBtn]));
 
@@ -816,9 +822,11 @@
           const a = newArmy((r.meta && r.meta.name) || "Imported army");
           a.meta = { name: (r.meta && r.meta.name) || "Imported army", points: (r.meta && r.meta.points) || "" };
           a.units = r.units;
+          a.faction = r.faction || "warriors-of-chaos";
           DB.armies.push(a); DB.activeId = a.id; state = activeArmy();
         } else {
           state.units = r.units;
+          state.faction = r.faction || state.faction || "warriors-of-chaos";
           if (r.meta && r.meta.name) state.meta = r.meta;
         }
         save(); render(); closeModal();
@@ -911,7 +919,9 @@
       if (!a.meta) a.meta = { name: "Imported army", points: "" };
       if (!a.units) a.units = [];
       if (!a.turn) a.turn = 1;
-      for (const u of a.units) if (!u.items) u.items = P.linkItems(u.options || []);
+      if (!a.faction) a.faction = "warriors-of-chaos";
+      const fd = factionData(a.faction);
+      for (const u of a.units) if (!u.items) u.items = P.linkItems(u.options || [], fd);
     }
     DB.armies = DB.armies.concat(armies);
     DB.activeId = armies[0].id; state = activeArmy();

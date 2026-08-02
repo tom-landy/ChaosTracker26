@@ -338,5 +338,10 @@
 
   window.WOC_DATA = {
     STATS, UNITS, UNIT_INDEX, MOUNTS, MOUNT_INDEX, MARKS, GAZE_REWARDS, SPELL_EFFECTS, LORES, LORE_NAMES, ITEMS, ITEMS_INDEX, ITEM_CATEGORIES, DURATIONS, norm,
+    // faction metadata (used by the faction-aware app)
+    faction: "warriors-of-chaos", factionName: "Warriors of Chaos", theme: "chaos", hasMarks: true, hasGaze: true,
   };
+  // register in the shared faction registry (Empire etc. add themselves too)
+  window.FACTIONS = window.FACTIONS || {};
+  window.FACTIONS["warriors-of-chaos"] = window.WOC_DATA;
 })();

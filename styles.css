@@ -393,3 +393,19 @@ button:focus-visible, a.tag:focus-visible { outline: 2px solid var(--gaze); outl
   .roster { max-width: 1180px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; align-items: start; }
   .roster .cat, .roster .summary, .roster .empty { grid-column: 1 / -1; }
 }
+
+/* ---- Empire faction theme (gold on Reikland blue) ---- */
+body[data-theme="empire"] {
+  --bg: #0c1526; --bg2: #122043; --card: #16264a; --card2: #1c315c;
+  --line: #2f4a7a; --line2: #41608f; --ink: #f4ecd6; --muted: #aebbd6;
+  --brass: #e0bd5a; --brass-d: #8a6c26; --gaze: #e6ad3c;
+  --mk: #4a6aa0; --mk-soft: rgba(120,150,210,0.14);
+  background:
+    radial-gradient(140% 70% at 50% -10%, #1c3168 0%, var(--bg2) 42%, var(--bg) 78%),
+    var(--bg);
+}
+body[data-theme="empire"]::after { display: none; } /* no chaos-star watermark */
+body[data-theme="empire"] .card { --mk: #4a6aa0; --mk-soft: rgba(120,150,210,0.14); }
+body[data-theme="empire"] .topbar { background: linear-gradient(180deg, rgba(18,32,67,0.96), rgba(12,21,38,0.86)); }
+body[data-theme="empire"] button.primary,
+body[data-theme="empire"] button.big.roll { background: linear-gradient(180deg, #e6b93f, #b5871c); border-color: #8a6620; color: #1a1405; box-shadow: 0 2px 0 #6d5010, 0 6px 16px rgba(224,173,60,0.28); }

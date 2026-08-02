@@ -46,18 +46,21 @@
     return String(s || "").replace(/\{[^}]*\}/g, "").replace(/\s{2,}/g, " ").trim();
   }
 
-  function matchUnit(name) {
-    const n = D.norm(name);
+  function matchUnit(name, fd) {
+    fd = fd || D;
+    const n = fd.norm(name);
     if (!n) return null;
-    if (D.UNIT_INDEX[n]) return D.UNIT_INDEX[n];
-    if (D.UNIT_INDEX[n.replace(/s$/, "")]) return D.UNIT_INDEX[n.replace(/s$/, "")];
+    if (fd.UNIT_INDEX[n]) return fd.UNIT_INDEX[n];
+    if (fd.UNIT_INDEX[n.replace(/s$/, "")]) return fd.UNIT_INDEX[n.replace(/s$/, "")];
     let best = null, bestLen = 0;
-    for (const u of D.UNITS) {
-      const un = D.norm(u.name), uns = un.replace(/s$/, "");
+    for (const u of fd.UNITS) {
+      const un = fd.norm(u.name), uns = un.replace(/s$/, "");
       if ((n.includes(un) || n.includes(uns)) && un.length > bestLen) { best = u; bestLen = un.length; }
     }
     return best;
   }
+  // Resolve faction data for an OWB army id (falls back to Chaos).
+  function factionOf(armyId) { return (window.FACTIONS && window.FACTIONS[armyId]) || D; }
 
   // Apply a matched stat-line. Does NOT set category — the list's own placement
   // (which army-composition slot the unit was taken in) always wins over our default.
@@ -71,10 +74,11 @@
   }
 
   // Match option/wargear strings against the known items library, returning ids.
-  function linkItems(options) {
+  function linkItems(options, fd) {
+    fd = fd || D;
     const ids = [];
     for (const opt of options || []) {
-      const it = D.ITEMS_INDEX && D.ITEMS_INDEX[D.norm(opt)];
+      const it = fd.ITEMS_INDEX && fd.ITEMS_INDEX[fd.norm(opt)];
       if (it && ids.indexOf(it.id) === -1) ids.push(it.id);
     }
     return ids;
@@ -109,12 +113,13 @@
     return out;
   }
 
-  function unitFromEntry(entry, category) {
+  function unitFromEntry(entry, category, fd) {
+    fd = fd || D;
     const u = newUnit();
     u.category = category;
     const name = cleanName(entry.name_en || entry.name || "Unit");
     u.models = typeof entry.strength === "number" && entry.strength > 0 ? entry.strength : 1;
-    const def = matchUnit(name);
+    const def = matchUnit(name, fd);
     if (def) applyMatch(u, def); else u.name = name;
     if (def && (def.isChar || def.monster)) u.models = 1;
 
@@ -132,7 +137,7 @@
     const mount = (entry.mounts || []).find((m) => m && m.active && !/^on foot$/i.test(m.name_en || ""));
     if (mount) {
       u.mount = cleanName(mount.name_en);
-      const mdef = D.MOUNT_INDEX[D.norm(u.mount)] || D.MOUNT_INDEX[D.norm(u.mount).replace(/s$/, "")];
+      const mdef = fd.MOUNT_INDEX[fd.norm(u.mount)] || fd.MOUNT_INDEX[fd.norm(u.mount).replace(/s$/, "")];
       if (mdef) { u.mountProfile = Object.assign({}, mdef.profile); if (mdef.note) u.mountNote = mdef.note; }
     }
 
@@ -159,7 +164,7 @@
     u.options = wargear.concat(command).concat(magic).filter(Boolean);
 
     // Auto-link known gifts / magic items / traits to their effects.
-    u.items = linkItems(u.options);
+    u.items = linkItems(u.options, fd);
 
     // Static special rules → tags.
     if (entry.specialRules && entry.specialRules.name_en) {
@@ -173,12 +178,14 @@
   }
 
   function fromJson(obj) {
+    const factionId = obj.army || "warriors-of-chaos";
+    const fd = factionOf(factionId);
     const meta = { name: obj.name || "My Army", points: obj.points != null ? String(obj.points) : "" };
     const units = [];
     for (const key in CAT_MAP) {
-      for (const entry of obj[key] || []) units.push(unitFromEntry(entry, CAT_MAP[key]));
+      for (const entry of obj[key] || []) units.push(unitFromEntry(entry, CAT_MAP[key], fd));
     }
-    return { meta, units, sawAnyHeader: true, source: "json" };
+    return { meta, units, faction: fd.faction || factionId, sawAnyHeader: true, source: "json" };
   }
 
   // --- text fallback path ---------------------------------------------------
