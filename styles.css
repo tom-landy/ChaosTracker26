@@ -409,3 +409,31 @@ body[data-theme="empire"] .card { --mk: #4a6aa0; --mk-soft: rgba(120,150,210,0.1
 body[data-theme="empire"] .topbar { background: linear-gradient(180deg, rgba(18,32,67,0.96), rgba(12,21,38,0.86)); }
 body[data-theme="empire"] button.primary,
 body[data-theme="empire"] button.big.roll { background: linear-gradient(180deg, #e6b93f, #b5871c); border-color: #8a6620; color: #1a1405; box-shadow: 0 2px 0 #6d5010, 0 6px 16px rgba(224,173,60,0.28); }
+
+/* "Update available — tap to refresh" bar (service-worker update). */
+.updatebar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(12px + var(--safe-b));
+  z-index: 5000;
+  max-width: calc(100% - 24px);
+  padding: 12px 20px;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #1a1405;
+  background: linear-gradient(180deg, var(--brass), var(--brass-d));
+  border: 1px solid var(--brass-d);
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  animation: updatebar-in 0.35s ease-out;
+}
+.updatebar:hover { filter: brightness(1.06); }
+.updatebar:active { transform: translateX(-50%) translateY(1px); }
+.updatebar:disabled { opacity: 0.75; cursor: default; }
+@keyframes updatebar-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

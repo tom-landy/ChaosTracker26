@@ -1,5 +1,5 @@
 /* ChaosTracker26 service worker — offline-first cache so the app works at the table. */
-const CACHE = "chaostracker26-v33";
+const CACHE = "chaostracker26-v34";
 const ASSETS = [
   "./",
   "./index.html",
@@ -17,7 +17,14 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // Note: no skipWaiting() here — the new version waits until the user taps the
+  // in-app "Update available" bar, which posts SKIP_WAITING (below).
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+});
+
+// Activate the waiting worker on demand (from the in-app update bar).
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {

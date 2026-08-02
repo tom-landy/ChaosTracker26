@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v33"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v34"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -1009,12 +1009,37 @@
     render();
 
     if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+      // Show a "tap to refresh" bar when a newer version is ready, rather than
+      // reloading mid-game. Tapping activates the waiting worker; controllerchange
+      // then reloads once. (Data lives in localStorage, so a reload is safe.)
+      const showUpdateBanner = (worker) => {
+        if (!worker || document.getElementById("updatebar")) return;
+        const bar = el("button", {
+          id: "updatebar", class: "updatebar", type: "button",
+          onclick: () => {
+            bar.disabled = true;
+            bar.textContent = "Updating…";
+            worker.postMessage({ type: "SKIP_WAITING" });
+          },
+        }, "🔄 Update available — tap to refresh");
+        document.body.appendChild(bar);
+      };
       navigator.serviceWorker.register("service-worker.js").then((reg) => {
         // check for a newer version whenever the app is opened/focused
         reg.update().catch(() => {});
         window.addEventListener("focus", () => reg.update().catch(() => {}));
+        // a newer worker was already downloaded while the app was closed
+        if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
+        // a newer worker finished downloading while the app is open
+        reg.addEventListener("updatefound", () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener("statechange", () => {
+            if (nw.state === "installed" && navigator.serviceWorker.controller) showUpdateBanner(nw);
+          });
+        });
       }).catch(() => {});
-      // when a new service worker takes control, reload once so the latest UI shows
+      // when the new worker takes control (after the user taps), reload once
       let reloading = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (reloading) return; reloading = true; location.reload();
