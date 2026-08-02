@@ -134,14 +134,75 @@
       { id: "nec-6", name: "Spirit Leech", type: "Hex", cv: "8+", range: '18"', kind: "hex",
         mods: { Ld: -2 }, rules: ["-2 Ld (min 2); can't use General's Inspiring Presence (may target a unit in combat)"], duration: "Until end of turn" },
     ],
-    "prayers-sigmar": [],
-    "prayers-ulric": [],
+    // Prayers of Sigmar (Warrior Priests) — invoked on a Leadership test.
+    "prayers-sigmar": [
+      { id: "psig-1", name: "Hammer of Sigmar", type: "Prayer", cv: "Ld test", range: "Command", kind: "augment",
+        mods: {}, rules: ["Re-roll natural 1s To Hit & To Wound in combat (self, mount & one unit in Command range)"], duration: "Until start of your next turn" },
+      { id: "psig-2", name: "Shield of Faith", type: "Prayer", cv: "Ld test", range: "Command", kind: "augment",
+        mods: {}, rules: ["5+ Ward vs wounds in the Shooting phase (self & one unit in Command range)"], duration: "Until start of your next turn" },
+      { id: "psig-3", name: "Soulfire", type: "Prayer", cv: "Ld test", range: "Combat", kind: "damage", instant: true,
+        mods: {}, rules: ["Enemy in combat takes D6 hits at S3, AP -2, Flaming & Magical Attacks"] },
+    ],
+    // Prayers of Ulric (Warrior Priests of Ulric) — invoked on a Leadership test.
+    "prayers-ulric": [
+      { id: "pulr-1", name: "Battle Howl", type: "Prayer", cv: "Ld test", range: "Command", kind: "augment",
+        mods: {}, rules: ["+D3 to Charge rolls (self & one infantry/cavalry unit in Command range)"], duration: "Until start of your next turn" },
+      { id: "pulr-2", name: "Winter's Chill", type: "Prayer", cv: "Ld test", range: "Self", kind: "augment",
+        mods: {}, rules: ["Enemies attacking must re-roll natural 6s To Hit (self, mount & joined unit)"], duration: "Until start of your next turn" },
+      { id: "pulr-3", name: "Wrath of Winter", type: "Prayer", cv: "Ld test", range: "Self", kind: "augment",
+        mods: {}, rules: ["Gain Multiple Wounds (2) (self, mount & joined unit)"], duration: "Until start of your next turn" },
+    ],
   };
   const LORE_NAMES = {
     "battle-magic": "Battle Magic", "daemonology": "Daemonology", "dark-magic": "Dark Magic",
     "elementalism": "Elementalism", "illusion": "Illusion", "necromancy": "Necromancy",
     "prayers-sigmar": "Prayers of Sigmar", "prayers-ulric": "Prayers of Ulric",
   };
+
+  // --- Empire magic items (Forces of Fantasy) --------------------------------
+  // Auto-linked from an imported list's wargear/options: mods apply to the live
+  // stat line, rules show as a reminder tag. Points omitted (they change with FAQs).
+  const ITEM_CATEGORIES = [
+    ["weapon", "Magic Weapons"],
+    ["armour", "Magic Armour"],
+    ["talisman", "Talismans"],
+    ["standard", "Magic Standards"],
+    ["enchanted", "Enchanted Items"],
+    ["arcane", "Arcane Items"],
+    ["engineer", "Empire Weapons"],
+  ];
+  const ITEMS = [
+    // Magic Weapons
+    { id: "wpn-runefang", cat: "weapon", name: "Runefang", mods: {}, rules: ["AP -2, Magical Attacks, Strike First; To Wound roll of 2+ always wounds"] },
+    { id: "wpn-helsturm", cat: "weapon", name: "Mace of Helsturm", mods: {}, rules: ["Magical Attacks; double-handed = S10, AP -5, Multiple Wounds (D6), one attack only"] },
+    { id: "wpn-justice", cat: "weapon", name: "Sword of Justice", mods: {}, rules: ["AP -1, Armour Bane (1), Magical, Multiple Wounds (2); re-roll failed To Wound"] },
+    { id: "wpn-dragonbow", cat: "weapon", name: "Dragon Bow", mods: {}, rules: ['36" S6, AP -2, Magical Attacks, Multiple Wounds (2) (Commanders only)'] },
+    // Magic Armour
+    { id: "arm-fortune", cat: "armour", name: "Armour of Fortune", mods: { Sv: 5, Ward: 6 }, rules: ["Heavy armour; 6+ Ward; immune to Killing Blow"] },
+    { id: "arm-tarnus", cat: "armour", name: "Armour of Tarnus", mods: { Sv: 6, Ward: 5 }, rules: ["Light armour (Wizards, no penalty); 5+ Ward"] },
+    // Talismans
+    { id: "tal-whitecloak", cat: "talisman", name: "The White Cloak", mods: { Ward: 5 }, rules: ["5+ Ward; 3+ Ward vs Flaming Attacks"] },
+    { id: "tal-jade", cat: "talisman", name: "Jade Amulet", mods: {}, rules: ["Immune to Killing Blow"] },
+    // Magic Standards
+    { id: "std-imperial", cat: "standard", name: "Imperial Banner", mods: {}, rules: ["Friendly units in Command range roll 3D6 & discard the highest for Fear/Panic/Terror tests"] },
+    { id: "std-griffon", cat: "standard", name: "Griffon Standard", mods: {}, rules: ["Unit claims +2 Rank Bonus per extra rank (instead of +1)"] },
+    { id: "std-gleaming", cat: "standard", name: "The Gleaming Pennant", mods: {}, rules: ["Single use: re-roll one failed Leadership test (not a Break test)"] },
+    { id: "std-duty", cat: "standard", name: "Banner of Duty", mods: {}, rules: ["Re-roll failed Rally tests"] },
+    // Enchanted Items
+    { id: "ench-laurels", cat: "enchanted", name: "Laurels of Victory", mods: {}, rules: ["Each unsaved wound caused by the bearer (not their mount) is worth 2 combat result points"] },
+    { id: "ench-silverhorn", cat: "enchanted", name: "The Silver Horn", mods: {}, rules: ["Swiftstride characters only: re-roll the Swiftstride D6 (bearer & joined unit)"] },
+    { id: "ench-shroud", cat: "enchanted", name: "Shroud of Iron", mods: {}, rules: ["6+ Ward vs wounds from non-magical templates (bearer & joined unit)"] },
+    // Arcane Items
+    { id: "arc-ashur", cat: "arcane", name: "Book of Ashur", mods: {}, rules: ['+3" Dispel range; +1 to Casting/Dispel unless a natural double is rolled'] },
+    { id: "arc-familiar", cat: "arcane", name: "Wizard's Familiar", mods: {}, rules: ["0-1 per Wizard; +1 to Dispel rolls"] },
+    { id: "arc-staff", cat: "arcane", name: "Wizard's Staff", mods: {}, rules: ["0-1 per Wizard; +1 to Casting for Assailment spells & Magic Missiles"] },
+    // Weapons of the Empire (Engineer special weapons)
+    { id: "eng-blunderbuss", cat: "engineer", name: "Grenade Launching Blunderbuss", mods: {}, rules: ['24" S4, AP -2, Cumbersome, Ponderous; a hit causes D3+1 hits'] },
+    { id: "eng-hochland", cat: "engineer", name: "Hochland Long Rifle", mods: {}, rules: ['36" S4, AP -1, Armour Bane (1), Cumbersome, Ponderous; may target a specific model'] },
+    { id: "eng-pigeon", cat: "engineer", name: "Pigeon Bombs", mods: {}, rules: ['Instead of shooting: pick an enemy within 24" and roll on the Pigeon Bomb table'] },
+  ];
+  const ITEMS_INDEX = {};
+  for (const it of ITEMS) ITEMS_INDEX[norm(it.name)] = it;
 
   // Build indexes.
   const UNIT_INDEX = {};
@@ -156,7 +217,7 @@
     MARKS: {}, GAZE_REWARDS: [],
     SPELL_EFFECTS: W.SPELL_EFFECTS,
     LORES, LORE_NAMES,
-    ITEMS: [], ITEMS_INDEX: {}, ITEM_CATEGORIES: [],
+    ITEMS, ITEMS_INDEX, ITEM_CATEGORIES,
     DURATIONS: W.DURATIONS, norm,
     faction: "empire-of-man", factionName: "The Empire", theme: "empire", hasMarks: false, hasGaze: false,
   };
