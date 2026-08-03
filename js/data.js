@@ -254,6 +254,84 @@
     ],
   };
 
+  // --- Universal lores (core rulebook) ---------------------------------------
+  // Available to several factions (Empire, High Elves, …) but NOT to Chaos, so
+  // they're kept out of the Chaos LORES map above and exposed via LORE_LIB for
+  // the other faction data files to compose their own lore lists from.
+  const UNIVERSAL_LORES = {
+    "elementalism": [
+      { id: "el-sig", name: "Storm Call", type: "Hex", cv: "7+", range: '12"', kind: "hex",
+        mods: { M: -1, I: -1 }, rules: ["-1 M, -1 I (min 1); expires any other Hex on the target"], duration: "Until start of your next turn" },
+      { id: "el-1", name: "Flaming Sword", type: "Assailment", cv: "8+", range: "Combat", kind: "damage", instant: true,
+        mods: {}, rules: ["Enemy in combat takes D6+1 hits at S3, Flaming Attacks"] },
+      { id: "el-2", name: "Plague of Rust", type: "Hex", cv: "9+", range: '21"', kind: "hex",
+        mods: { SvMod: 2 }, rules: ["-2 to armour value (may target a unit in combat)"], duration: "Until start of your next turn" },
+      { id: "el-3", name: "Summon Elemental Spirit", type: "Magical Vortex", cv: "9+", range: '15"', kind: "damage",
+        mods: {}, rules: ['Remains in play: 3" template = dangerous terrain, blocks line of sight, moves D6"/turn; units it crosses take D3+3 hits at S4, AP -1'], duration: "Remains in play" },
+      { id: "el-4", name: "Earthen Ramparts", type: "Enchantment", cv: "10+", range: '15"', kind: "augment",
+        mods: { Ward: 5 }, rules: ["5+ Ward save; counts as behind a defended obstacle if charged; but cannot march or charge"], duration: "Until start of your next turn" },
+      { id: "el-5", name: "Wind Blast", type: "Magic Missile", cv: "8+", range: '15"', kind: "damage", instant: true,
+        mods: {}, rules: ["D3+3 hits at S5, AP -1; target must then Give Ground"] },
+      { id: "el-6", name: "Travel Mystical Pathway", type: "Conveyance", cv: "10+", range: '9"', kind: "augment", instant: true,
+        mods: {}, rules: ['Teleport a friendly unit up to 12" (not within 6" of enemies); it cannot move again this phase'] },
+    ],
+    "illusion": [
+      { id: "il-sig", name: "Glittering Robe", type: "Enchantment", cv: "8+", range: "Self", kind: "augment",
+        mods: {}, rules: ["Enemies -1 To Hit vs caster & joined unit; expires any other Enchantment on them"], duration: "Until start of your next turn" },
+      { id: "il-1", name: "Mind Razor", type: "Magic Missile", cv: "7+", range: '15"', kind: "damage", instant: true,
+        mods: {}, rules: ["Target takes a Ld test: passed = D3 hits at S3; failed = D3+3 hits at S4, AP -3"] },
+      { id: "il-2", name: "Shimmering Dragon", type: "Conveyance", cv: "8+", range: '12"', kind: "augment",
+        mods: {}, rules: ["Friendly character gains Fly (10)"], duration: "Until end of turn" },
+      { id: "il-3", name: "Column of Crystal", type: "Magical Vortex", cv: "10+", range: '9"', kind: "damage",
+        mods: {}, rules: ['Remains in play: 5" template = impassable terrain, blocks line of sight, does not move'], duration: "Remains in play" },
+      { id: "il-4", name: "Confounding Convocation", type: "Hex", cv: "9+", range: '9"', kind: "hex",
+        mods: {}, rules: ["Remains in play: target is subject to Stupidity"], duration: "Remains in play" },
+      { id: "il-5", name: "Spectral Doppelganger", type: "Assailment", cv: "9+", range: "Combat", kind: "damage", instant: true,
+        mods: {}, rules: ["Enemy in combat takes 2D6 hits using the caster's profile & weapon"] },
+      { id: "il-6", name: "Miasmic Mirage", type: "Hex", cv: "11+", range: '15"', kind: "hex",
+        mods: { M: -2 }, rules: ["-2 M (min 1); cannot march or charge; expires any other Hex on the target"], duration: "Until start of your next turn" },
+    ],
+    "necromancy": [
+      { id: "nec-sig", name: "The Dwellers Below", type: "Assailment", cv: "7+", range: "Combat", kind: "damage", instant: true,
+        mods: {}, rules: ['3" template on an enemy unit in combat, scatters D3+1"; models under it take a single S3 hit'] },
+      { id: "nec-1", name: "Deathly Cabal", type: "Enchantment", cv: "10+", range: "Self", kind: "augment",
+        mods: {}, rules: ["6+ Ward vs non-magical attacks; gain Fear (or Terror if already Fear) — caster & joined unit"], duration: "Until start of your next turn" },
+      { id: "nec-2", name: "Unquiet Spirits", type: "Magic Missile", cv: "8+", range: '15"', kind: "damage", instant: true,
+        mods: {}, rules: ["3D6 hits at S2, no armour save (Ward/Regen allowed)"] },
+      { id: "nec-3", name: "Spiritual Vortex", type: "Magical Vortex", cv: "11+", range: '12"', kind: "damage",
+        mods: {}, rules: ['Remains in play: 5" template = dangerous terrain; enemies within 8" get -1 Ld (min 2) & cannot use their General\'s Inspiring Presence'], duration: "Remains in play" },
+      { id: "nec-4", name: "Curse of Years", type: "Hex", cv: "10+", range: '15"', kind: "hex",
+        mods: { M: -1, WS: -1, T: -1 }, rules: ["-1 M, -1 WS, -1 T (min 1); expires any other Hex on the target"], duration: "Until start of your next turn" },
+      { id: "nec-5", name: "Spectral Steed", type: "Conveyance", cv: "9+", range: '12"', kind: "augment",
+        mods: {}, rules: ["Remains in play: friendly infantry character gains Ethereal & Fly (10)"], duration: "Remains in play" },
+      { id: "nec-6", name: "Spirit Leech", type: "Hex", cv: "8+", range: '18"', kind: "hex",
+        mods: { Ld: -2 }, rules: ["-2 Ld (min 2); can't use General's Inspiring Presence (may target a unit in combat)"], duration: "Until end of turn" },
+    ],
+    // Lore of High Magic (the Lore of Saphery used by High Elf mages).
+    "high-magic": [
+      { id: "hm-sig", name: "Drain Magic", type: "Hex", cv: "9+", range: "Self", kind: "hex",
+        mods: {}, rules: ['Remains in play: enemy Wizards within 24" of the caster must increase their spells\' casting value by 2'], duration: "Remains in play" },
+      { id: "hm-1", name: "Walk Between Worlds", type: "Conveyance", cv: "10+", range: "Self", kind: "augment",
+        mods: {}, rules: ["Caster & joined unit gain Ethereal and Reserve Move"], duration: "Until start of your next turn" },
+      { id: "hm-2", name: "Fiery Convocation", type: "Magic Missile", cv: "10+", range: '18"', kind: "damage", instant: true,
+        mods: {}, rules: ['5" template over the target, scatters D3+1"; models under it take a S4 hit, AP -2, Flaming Attacks'] },
+      { id: "hm-3", name: "Tempest", type: "Magical Vortex", cv: "9+", range: '12"', kind: "damage",
+        mods: {}, rules: ['Remains in play: 3" template = dangerous terrain; within 6" enemies treat open ground as difficult, difficult as dangerous'], duration: "Remains in play" },
+      { id: "hm-4", name: "Corporeal Unmaking", type: "Assailment", cv: "8+", range: "Combat", kind: "damage", instant: true,
+        mods: {}, rules: ["Enemy in combat takes D3 hits at S5, no armour or Regen (Ward allowed)"] },
+      { id: "hm-5", name: "Fury of Khaine", type: "Enchantment", cv: "9+", range: '12"', kind: "augment",
+        mods: { A: 1 }, rules: ["Friendly unit gains Extra Attacks (+1) (may target a unit in combat)"], duration: "Until end of turn" },
+      { id: "hm-6", name: "Shield of Saphery", type: "Enchantment", cv: "9+", range: '18"', kind: "augment",
+        mods: { Ward: 5 }, rules: ["5+ Ward save; expires any other Enchantment on the target"], duration: "Until end of turn" },
+    ],
+  };
+  // Shared library other factions pick from (Chaos-relevant lores + universal).
+  const LORE_LIB = Object.assign({
+    "battle-magic": LORES["battle-magic"],
+    "dark-magic": LORES["dark-magic"],
+    "daemonology": LORES["daemonology"],
+  }, UNIVERSAL_LORES);
+
   // --- Gifts, magic items & chaotic traits -----------------------------------
   // cat groups them in the picker. mods apply to the model's live stats; rules
   // are a short effect reminder shown as a tag. Saves: full plate -> Sv 4,
@@ -337,7 +415,7 @@
   ];
 
   window.WOC_DATA = {
-    STATS, UNITS, UNIT_INDEX, MOUNTS, MOUNT_INDEX, MARKS, GAZE_REWARDS, SPELL_EFFECTS, LORES, LORE_NAMES, ITEMS, ITEMS_INDEX, ITEM_CATEGORIES, DURATIONS, norm,
+    STATS, UNITS, UNIT_INDEX, MOUNTS, MOUNT_INDEX, MARKS, GAZE_REWARDS, SPELL_EFFECTS, LORES, LORE_LIB, LORE_NAMES, ITEMS, ITEMS_INDEX, ITEM_CATEGORIES, DURATIONS, norm,
     // faction metadata (used by the faction-aware app)
     faction: "warriors-of-chaos", factionName: "Warriors of Chaos", theme: "chaos", hasMarks: true, hasGaze: true,
   };

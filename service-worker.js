@@ -1,5 +1,5 @@
 /* ChaosTracker26 service worker — offline-first cache so the app works at the table. */
-const CACHE = "chaostracker26-v34";
+const CACHE = "chaostracker26-v35";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const ASSETS = [
   "./manifest.webmanifest",
   "./js/data.js",
   "./js/data-empire.js",
+  "./js/data-highelves.js",
   "./js/parser.js",
   "./js/app.js",
   "./icons/favicon-32.png",

@@ -437,3 +437,19 @@ body[data-theme="empire"] button.big.roll { background: linear-gradient(180deg, 
   from { opacity: 0; transform: translateX(-50%) translateY(16px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
+
+/* High Elf Realms theme — Ithilmar white/silver on sapphire twilight. */
+body[data-theme="highelves"] {
+  --bg: #0a1420; --bg2: #0f2135; --card: #13293f; --card2: #183451;
+  --line: #2c5477; --line2: #40709a; --ink: #eef6fc; --muted: #9fc2dc;
+  --brass: #d7e8f5; --brass-d: #6d94b5; --gaze: #8fd4ea;
+  --mk: #7fb4dc; --mk-soft: rgba(150,205,238,0.14);
+  background:
+    radial-gradient(140% 70% at 50% -10%, #1c4067 0%, var(--bg2) 42%, var(--bg) 78%),
+    var(--bg);
+}
+body[data-theme="highelves"]::after { display: none; } /* no chaos-star watermark */
+body[data-theme="highelves"] .card { --mk: #7fb4dc; --mk-soft: rgba(150,205,238,0.14); }
+body[data-theme="highelves"] .topbar { background: linear-gradient(180deg, rgba(19,44,71,0.96), rgba(10,20,32,0.86)); }
+body[data-theme="highelves"] button.primary,
+body[data-theme="highelves"] button.big.roll { background: linear-gradient(180deg, #e6f1fb, #9fc0da); border-color: #6d94b5; color: #0c2033; box-shadow: 0 2px 0 #5a809f, 0 6px 16px rgba(185,215,240,0.28); }
