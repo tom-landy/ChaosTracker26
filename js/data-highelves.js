@@ -5,9 +5,8 @@
  * Profiles are from the High Elf Realms army reference; armour saves are derived
  * from base wargear (light 6+, heavy 5+, full plate 4+, +1 shield, +1 Ithilmar
  * barding) and are editable in-app. High Elves have no Marks or Gaze of the Gods.
- *
- * Magic items & Elven Honours are not yet baked in (they live in the Arcane
- * Journal: High Elf Realms) — they still import as equipment chips.
+ * Magic items, Elven weapons and Elven Honours are from the Arcane Journal and
+ * auto-link from an imported list.
  */
 (function () {
   "use strict";
@@ -98,6 +97,62 @@
     "dark-magic": "Dark Magic", "elementalism": "Elementalism", "illusion": "Illusion",
   };
 
+  // --- Magic items, Elven weapons & Elven Honours (Arcane Journal) ------------
+  // Auto-linked from an imported list's wargear/items/honours: mods apply to the
+  // live stat line, rules show as a reminder tag. Points omitted (FAQ-volatile).
+  const ITEM_CATEGORIES = [
+    ["weapon", "Magic Weapons"],
+    ["armour", "Magic Armour"],
+    ["talisman", "Talismans"],
+    ["standard", "Magic Standards"],
+    ["enchanted", "Enchanted Items"],
+    ["arcane", "Arcane Items"],
+    ["wargear", "Elven Weapons"],
+    ["honour", "Elven Honours"],
+  ];
+  const ITEMS = [
+    // Magic Weapons
+    { id: "wpn-whitesword", cat: "weapon", name: "The White Sword", mods: {}, rules: ["S+3, AP -2, Magical Attacks, Monster Slayer, Two Handed, Strike Last (infantry/chariot only)"] },
+    { id: "wpn-leapinggold", cat: "weapon", name: "The Blade of Leaping Gold", mods: {}, rules: ["Armour Bane (2), Extra Attacks (+D3), Magical Attacks"] },
+    { id: "wpn-reaverbow", cat: "weapon", name: "Reaver Bow", mods: {}, rules: ['30" S+1, Magical; counts as Bow of Avelorn; shots = Attacks characteristic, no multi-shot penalty'] },
+    { id: "wpn-foebane", cat: "weapon", name: "Foe Bane", mods: {}, rules: ["Magical Attacks; a To Wound roll of 4+ always wounds"] },
+    // Magic Armour
+    { id: "arm-caledor", cat: "armour", name: "Armour of Caledor", mods: { Sv: 4, Ward: 5 }, rules: ["Full plate armour; 5+ Ward"] },
+    { id: "arm-dragonhelm", cat: "armour", name: "Dragon Helm", mods: {}, rules: ["+1 armour value (max 2+); 6+ Ward vs Flaming Attacks"] },
+    // Talismans
+    { id: "tal-loremaster-cloak", cat: "talisman", name: "The Loremaster's Cloak", mods: {}, rules: ["4+ Ward vs wounds from Magic Missiles (bearer & joined unit)"] },
+    { id: "tal-opal", cat: "talisman", name: "Opal Amulet", mods: {}, rules: ["Single use: 2+ Ward against a single wound"] },
+    // Magic Standards
+    { id: "std-arcane-protection", cat: "standard", name: "Banner of Arcane Protection", mods: {}, rules: ['Unit gains Magic Resistance (-3); friendly units within 6" gain Magic Resistance (-1)'] },
+    { id: "std-battle-banner", cat: "standard", name: "Battle Banner", mods: {}, rules: ["+D3 combat result points"] },
+    { id: "std-lion", cat: "standard", name: "Lion Standard", mods: {}, rules: ["Unit automatically passes Fear & Terror tests"] },
+    { id: "std-ellyrion", cat: "standard", name: "Banner of Ellyrion", mods: {}, rules: ["Unit gains Move Through Cover"] },
+    // Enchanted Items
+    { id: "ench-nullstone", cat: "enchanted", name: "Null Stone", mods: {}, rules: ["Wizards (friend or foe) in Command range: -1 Casting & Dispel; Ld test to become un-targetable/immune to spells until your next turn"] },
+    { id: "ench-cloak-beards", cat: "enchanted", name: "The Cloak of Beards", mods: {}, rules: ["Bearer causes Terror; but other models cannot use the bearer's Leadership"] },
+    { id: "ench-seed-rebirth", cat: "enchanted", name: "Seed of Rebirth", mods: {}, rules: ["Regeneration (5+)"] },
+    // Arcane Items
+    { id: "arc-sigil-asuryan", cat: "arcane", name: "Sigil of Asuryan", mods: {}, rules: ["Single use: auto-dispel one spell with no Dispel roll (not a perfect invocation)"] },
+    { id: "arc-annulian", cat: "arcane", name: "Annulian Crystal", mods: {}, rules: ["Once/turn on a successful cast: forget that spell & immediately generate another"] },
+    { id: "arc-silvery-wand", cat: "arcane", name: "Silvery Wand", mods: {}, rules: ["Knows one extra spell (does not raise Level)"] },
+    // Elven Weapons (granted by Honours / options — Armoury of Ulthuan)
+    { id: "war-avelorn", cat: "wargear", name: "Bow of Avelorn", mods: {}, rules: ['30" S, Armour Bane (1), Magical Attacks, Volley Fire'] },
+    { id: "war-ceremonial", cat: "wargear", name: "Ceremonial Halberd", mods: {}, rules: ["S+1, AP -1, Armour Bane (1), Fight in Extra Rank, Magical, Two Handed"] },
+    { id: "war-chracian-blade", cat: "wargear", name: "Chracian Great Blade", mods: {}, rules: ["S+2, AP -3, Two Handed, Strike Last"] },
+    { id: "war-hoeth", cat: "wargear", name: "Sword of Hoeth", mods: {}, rules: ["S+2, AP -2, Magical Attacks, Two Handed"] },
+    // Elven Honours (character upgrades)
+    { id: "hon-loremaster", cat: "honour", name: "Loremaster", mods: {}, rules: ["High Elf Lords only; Level 1 Wizard (1 spell from Battle/Elementalism/High Magic/Illusion); may take Sword of Hoeth; Ithilmar Armour, Lileath's Blessing, Lore of Saphery; cannot be mounted"] },
+    { id: "hon-shadow-stalker", cat: "honour", name: "Shadow Stalker", mods: {}, rules: ["May take Bow of Avelorn; Ambushers, Evasive, Fire & Flee, Move Through Cover, Scouts; no heavy/full plate; cannot be mounted"] },
+    { id: "hon-anointed", cat: "honour", name: "Anointed of Asuryan", mods: {}, rules: ["Mount: Flamespyre/Frostheart Phoenix; may take ceremonial halberd; Blessings of Asuryan, Fear, Witness to Destiny; Veteran (replaces Valour of Ages)"] },
+    { id: "hon-caledor", cat: "honour", name: "Blood of Caledor", mods: { WS: 1 }, rules: ["Mount: Barded Elven Steed or Sun/Moon/Star Dragon; +1 WS; may take full plate; Dragon Armour, Impetuous"] },
+    { id: "hon-chracian", cat: "honour", name: "Chracian Hunter", mods: {}, rules: ["Mount: Lion Chariot of Chrace only; may take Chracian great blade; Lion Cloak, Move Through Cover, Stubborn"] },
+    { id: "hon-warden", cat: "honour", name: "Warden of Saphery", mods: {}, rules: ["May take Sword of Hoeth; Deflect Shots, Ithilmar Armour, Killing Blow; cannot be mounted"] },
+    { id: "hon-pure-heart", cat: "honour", name: "Pure of Heart", mods: {}, rules: ["Friendly units in Command range may use this character's Leadership; character & joined unit auto-pass Panic tests"] },
+    { id: "hon-sea-guard", cat: "honour", name: "Sea Guard", mods: {}, rules: ["Mount: Lothern Skycutter only; may take a warbow; Naval Discipline, Rallying Cry"] },
+  ];
+  const ITEMS_INDEX = {};
+  for (const it of ITEMS) ITEMS_INDEX[norm(it.name)] = it;
+
   // Build indexes.
   const UNIT_INDEX = {};
   for (const u of UNITS) { UNIT_INDEX[norm(u.name)] = u; UNIT_INDEX[norm(u.name).replace(/s$/, "")] = u; }
@@ -111,7 +166,7 @@
     MARKS: {}, GAZE_REWARDS: [],
     SPELL_EFFECTS: W.SPELL_EFFECTS,
     LORES, LORE_NAMES,
-    ITEMS: [], ITEMS_INDEX: {}, ITEM_CATEGORIES: [],
+    ITEMS, ITEMS_INDEX, ITEM_CATEGORIES,
     DURATIONS: W.DURATIONS, norm,
     faction: "high-elf-realms", factionName: "High Elf Realms", theme: "highelves", hasMarks: false, hasGaze: false,
   };

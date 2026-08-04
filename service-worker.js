@@ -1,5 +1,5 @@
 /* ChaosTracker26 service worker — offline-first cache so the app works at the table. */
-const CACHE = "chaostracker26-v35";
+const CACHE = "chaostracker26-v36";
 const ASSETS = [
   "./",
   "./index.html",
