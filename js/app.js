@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v42"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v43"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -348,7 +348,7 @@
   // VP-difference table, where the table already captures the whole result).
   function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
   function gameTotal(g, scale) { const base = gameTP(g, scale); if (base == null) return null; return base + (scale.table ? 0 : gameSec(g)); }
-  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "" }; }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objVal: "100", bagVal: "100", addsMine: [], addsThem: [] }; }
 
   // VP line items for the tally helper (Warfare 2026 triggers). Fixed-value
   // ones prefill their points; %-of-points ones you enter (need the unit's pts).
@@ -542,25 +542,48 @@
     return el("div", { class: "gamecard " + rClass }, [head, grid, effRow, objectivePanel(g)]);
   }
 
-  // A running objective/baggage VP tally for each side — folds into the game VP.
+  // Big-button objective/baggage scorer: tap ＋Objective / ＋Baggage under YOU or
+  // THEM to add points; ↩ Undo takes the last one back. Folds into the game VP.
   function objectivePanel(g) {
-    const row = (label, key) => {
-      const total = el("input", { class: "scoreinput objtotal", type: "number", inputmode: "numeric", placeholder: "0", value: g[key] == null ? "" : g[key], onchange: (e) => { g[key] = e.target.value; save(); render(); } });
-      const add = (n) => { g[key] = String(Math.max(0, (num(g[key]) || 0) + n)); save(); render(); };
-      const quick = el("div", { class: "objquick" }, [50, 100, 150, 200].map((n) => el("button", { class: "chip", onclick: () => add(n) }, "+" + n)).concat([
-        el("button", { class: "chip", title: "Subtract 50", onclick: () => add(-50) }, "−50"),
-      ]));
-      return el("div", { class: "objtally" }, [
-        el("div", { class: "objtallyhead" }, [el("span", { class: "muted small objtallylabel" }, label), total]),
-        quick,
+    if (g.objVal == null) g.objVal = "100";
+    if (g.bagVal == null) g.bagVal = "100";
+    g.addsMine = g.addsMine || []; g.addsThem = g.addsThem || [];
+    const objVal = num(g.objVal) || 0, bagVal = num(g.bagVal) || 0;
+
+    const add = (side, n) => {
+      if (!n) return;
+      const totKey = side === "me" ? "objMine" : "objThem", stack = side === "me" ? g.addsMine : g.addsThem;
+      g[totKey] = String(Math.max(0, (num(g[totKey]) || 0) + n));
+      stack.push(n); save(); render();
+    };
+    const undo = (side) => {
+      const totKey = side === "me" ? "objMine" : "objThem", stack = side === "me" ? g.addsMine : g.addsThem;
+      if (!stack.length) return;
+      g[totKey] = String(Math.max(0, (num(g[totKey]) || 0) - stack.pop()));
+      save(); render();
+    };
+    const col = (side, label, cls) => {
+      const stack = side === "me" ? g.addsMine : g.addsThem;
+      return el("div", { class: "bigcol " + cls }, [
+        el("div", { class: "bigcolh" }, label),
+        el("div", { class: "bigtotal" }, String(num(side === "me" ? g.objMine : g.objThem) || 0)),
+        el("button", { class: "bigbtn", onclick: () => add(side, objVal) }, ["＋ Objective", el("span", { class: "bigsub" }, "+" + objVal)]),
+        el("button", { class: "bigbtn", onclick: () => add(side, bagVal) }, ["＋ Baggage", el("span", { class: "bigsub" }, "+" + bagVal)]),
+        el("button", { class: "bigbtn undo", disabled: stack.length ? null : "disabled", onclick: () => undo(side) }, "↩ Undo"),
       ]);
     };
-    const body = el("div", { class: "objbody" }, [
-      el("p", { class: "muted small" }, "Points claimed from objectives, baggage trains, etc. Adds to each side's VP."),
-      row("Your objective / baggage VP", "objMine"),
-      row("Their objective / baggage VP", "objThem"),
+
+    const valInput = (label, key) => el("label", { class: "scorefield" }, [el("span", { class: "muted small" }, label), el("input", { class: "scoreinput tiny", type: "number", inputmode: "numeric", value: g[key], onchange: (e) => { g[key] = e.target.value; save(); render(); } })]);
+    const settings = el("details", { class: "objvals" }, [
+      el("summary", {}, "⚙ Point values"),
+      el("div", { class: "objvalsrow" }, [valInput("Objective VP", "objVal"), valInput("Baggage VP", "bagVal")]),
     ]);
-    return el("div", { class: "objpanel" }, [el("div", { class: "objpanelhead" }, "🎯 Objectives & baggage VP"), body]);
+
+    return el("div", { class: "objpanel" }, [
+      el("div", { class: "objpanelhead" }, "🎯 Objectives & baggage"),
+      el("div", { class: "bigcols" }, [col("me", "YOU", "you"), col("them", "THEM", "them")]),
+      settings,
+    ]);
   }
 
   function statCell(label, val, base, lowerBetter) {

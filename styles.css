@@ -550,10 +550,27 @@ body[data-theme="highelves"] button.big.roll { background: linear-gradient(180de
 .effvp { margin-top: 8px; color: var(--brass); font-weight: 700; }
 .objpanel { margin-top: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
 .objpanelhead { font-weight: 700; color: var(--ink); margin-bottom: 6px; }
-.objbody { display: flex; flex-direction: column; gap: 10px; }
-.objtally { display: flex; flex-direction: column; gap: 6px; }
-.objtallyhead { display: flex; align-items: center; gap: 10px; }
-.objtallylabel { flex: 1; }
-.objtotal { width: 5em; text-align: center; font-weight: 700; }
-.objquick { display: flex; flex-wrap: wrap; gap: 6px; }
-.objquick .chip { cursor: pointer; background: var(--card2); min-width: 3em; text-align: center; }
+/* Big-button "old person mode" objective scorer. */
+.bigcols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bigcol { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--line2); border-radius: 14px; padding: 10px; }
+.bigcol.you { border-color: color-mix(in srgb, var(--good) 55%, var(--line2)); }
+.bigcol.them { border-color: color-mix(in srgb, var(--bad) 55%, var(--line2)); }
+.bigcolh { text-align: center; font-weight: 800; letter-spacing: .08em; color: var(--muted); }
+.bigcol.you .bigcolh { color: var(--good); }
+.bigcol.them .bigcolh { color: var(--bad); }
+.bigtotal { text-align: center; font-size: 2.6rem; line-height: 1; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+.bigbtn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font: inherit; font-weight: 800; font-size: 1.05rem;
+  padding: 16px 10px; border-radius: 12px; cursor: pointer;
+  background: var(--card2); color: var(--ink); border: 1px solid var(--line2);
+}
+.bigbtn:active { transform: translateY(1px); }
+.bigbtn .bigsub { font-size: .8rem; font-weight: 700; color: var(--muted); }
+.bigcol.you .bigbtn { background: color-mix(in srgb, var(--good) 16%, var(--card2)); border-color: color-mix(in srgb, var(--good) 40%, var(--line2)); }
+.bigcol.them .bigbtn { background: color-mix(in srgb, var(--bad) 16%, var(--card2)); border-color: color-mix(in srgb, var(--bad) 40%, var(--line2)); }
+.bigbtn.undo { background: transparent; font-weight: 700; color: var(--muted); padding: 10px; }
+.bigbtn:disabled { opacity: .4; cursor: default; }
+.objvals { margin-top: 4px; }
+.objvals summary { cursor: pointer; color: var(--muted); font-size: 12.5px; padding: 4px 0; }
+.objvalsrow { display: flex; gap: 12px; }
