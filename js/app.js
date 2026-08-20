@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v40"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v41"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -310,20 +310,41 @@
     { id: "vponly", name: "Victory Points only (no tournament points)", none: true },
   ];
   function scoreScale(sc) { return SCORE_SCALES.find((s) => s.id === (sc && sc.scale)) || SCORE_SCALES[0]; }
-  // Warfare 2026: tournament points from the VP difference (winner–loser).
-  // 0–150 = 10–10 (draw), then +1/–1 per 150 VP up to 20–0 at 1501+.
+
+  // --- Objectives & baggage: live per-turn scoring that adds to a game's VP ---
+  // side is "me" | "them". Per-turn objectives score their VP each turn held;
+  // end-of-game objectives score for whoever holds them on the current turn.
+  function objVP(g, side) {
+    let t = 0;
+    const objs = g.objectives || [], holds = g.holds || {}, turns = g.turns || 6, cur = g.curTurn || 1;
+    for (const o of objs) {
+      const h = holds[o.id] || {}, vp = num(o.vp) || 0;
+      if (o.mode === "end") { if (h[cur] === side) t += vp; }
+      else { for (let k = 1; k <= turns; k++) if (h[k] === side) t += vp; }
+    }
+    const b = g.baggage || {}, bv = num(b.vp) || 0;
+    if (b.enabled) { if (side === "me" && b.theirs) t += bv; if (side === "them" && b.mine) t += bv; }
+    return t;
+  }
+  // Effective VP = victory points you enter (casualties) + objective/baggage VP.
+  function effMy(g) { return (num(g.myVP) || 0) + objVP(g, "me"); }
+  function effOpp(g) { return (num(g.oppVP) || 0) + objVP(g, "them"); }
+  function gameHasScore(g) { return num(g.myVP) !== "" || num(g.oppVP) !== "" || objVP(g, "me") > 0 || objVP(g, "them") > 0; }
+
+  // Warfare 2026: tournament points from the VP difference (winner–loser),
+  // using effective VP so captured objectives count. 0–150 = 10–10 (draw),
+  // then +1/–1 per 150 VP up to 20–0 at 1501+.
   function vpDiffTP(g) {
-    const my = num(g.myVP), opp = num(g.oppVP);
-    if (my === "" || opp === "") return null;
-    const diff = my - opp, ad = Math.abs(diff);
+    if (!gameHasScore(g)) return null;
+    const diff = effMy(g) - effOpp(g), ad = Math.abs(diff);
     if (ad <= 150) return 10; // draw band, both score 10
     const winTP = Math.min(20, 10 + Math.ceil((ad - 150) / 150));
     return diff > 0 ? winTP : 20 - winTP;
   }
   function gameResult(g, scale) {
     if (g.resultOverride) return g.resultOverride; // "W" | "D" | "L"
-    const a = num(g.myVP), b = num(g.oppVP);
-    if (a === "" || b === "") return "";
+    if (!gameHasScore(g)) return "";
+    const a = effMy(g), b = effOpp(g);
     if (scale && scale.table) { const d = a - b; return Math.abs(d) <= 150 ? "D" : d > 0 ? "W" : "L"; }
     return a > b ? "W" : a < b ? "L" : "D";
   }
@@ -338,7 +359,8 @@
   // VP-difference table, where the table already captures the whole result).
   function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
   function gameTotal(g, scale) { const base = gameTP(g, scale); if (base == null) return null; return base + (scale.table ? 0 : gameSec(g)); }
-  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "" }; }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", turns: 6, curTurn: 1, objectives: [], holds: {}, baggage: { enabled: false, vp: "", mine: false, theirs: false } }; }
+  function newObjective(name, vp, mode) { return { id: "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: name || "", vp: vp == null ? "" : String(vp), mode: mode || "perturn" }; }
 
   // VP line items for the tally helper (Warfare 2026 triggers). Fixed-value
   // ones prefill their points; %-of-points ones you enter (need the unit's pts).
@@ -392,12 +414,12 @@
     const lines = [];
     lines.push((state.meta.name || "Army") + (sc.event ? " — " + sc.event : ""));
     let W = 0, Dr = 0, L = 0, bp = 0, vpF = 0, vpA = 0;
-    for (const g of sc.games) { const r = gameResult(g, scale); if (r === "W") W++; else if (r === "D") Dr++; else if (r === "L") L++; const t = gameTotal(g, scale); if (t != null) bp += t; vpF += num(g.myVP) || 0; vpA += num(g.oppVP) || 0; }
+    for (const g of sc.games) { const r = gameResult(g, scale); if (r === "W") W++; else if (r === "D") Dr++; else if (r === "L") L++; const t = gameTotal(g, scale); if (t != null) bp += t; vpF += effMy(g); vpA += effOpp(g); }
     lines.push("Record " + W + "-" + Dr + "-" + L + (scale.none ? "" : " · " + bp + (scale.table ? " TP" : " battle pts")) + " · VP " + (vpF - vpA >= 0 ? "+" : "") + (vpF - vpA));
     sc.games.forEach((g, i) => {
       const r = gameResult(g, scale), rl = r === "W" ? "WIN" : r === "D" ? "DRAW" : r === "L" ? "LOSS" : "—";
       const t = gameTotal(g, scale);
-      lines.push("R" + (g.round || i + 1) + " vs " + (g.opponent || "?") + (g.oppFaction ? " (" + g.oppFaction + ")" : "") + ": " + rl + " " + (num(g.myVP) || 0) + "-" + (num(g.oppVP) || 0) + (t != null ? " [" + t + "]" : ""));
+      lines.push("R" + (g.round || i + 1) + " vs " + (g.opponent || "?") + (g.oppFaction ? " (" + g.oppFaction + ")" : "") + ": " + rl + " " + effMy(g) + "-" + effOpp(g) + (t != null ? " [" + t + "]" : ""));
     });
     const text = lines.join("\n");
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => flash("Results copied"), () => flash("Copy failed"));
@@ -520,13 +542,95 @@
       fld("Result", resSel),
       scale.manual ? fld("Battle pts", inp("tp", { type: "number", inputmode: "numeric", placeholder: "0" })) : null,
       (scale.none || scale.table) ? null : fld("Secondary pts", inp("secpts", { type: "number", inputmode: "numeric", placeholder: "0" })),
-      fld("Objectives", inp("secondary", { placeholder: "e.g. Held centre, Slay the Warlord" })),
     ]);
     const notes = fld("Notes", inp("notes", { placeholder: "How it went…" }));
     notes.classList.add("full");
     grid.append(notes);
 
-    return el("div", { class: "gamecard " + rClass }, [head, grid]);
+    // Effective VP readout when objectives/baggage are contributing.
+    const om = objVP(g, "me"), ot = objVP(g, "them");
+    const effRow = (om || ot) ? el("div", { class: "effvp small" }, "VP incl. objectives — You " + effMy(g) + " · Them " + effOpp(g) + "  (" + (om ? "+" + om : "0") + " / " + (ot ? "+" + ot : "0") + " objectives)") : null;
+
+    return el("div", { class: "gamecard " + rClass }, [head, grid, effRow, objectivePanel(g)]);
+  }
+
+  // Segmented "who holds it" control for the current turn.
+  function holderSeg(g, objId) {
+    const holds = (g.holds = g.holds || {});
+    const h = (holds[objId] = holds[objId] || {});
+    const cur = g.curTurn || 1;
+    const seg = el("div", { class: "holderseg" });
+    for (const [val, lab] of [["me", "You"], ["", "—"], ["them", "Them"]]) {
+      const on = (h[cur] || "") === val;
+      seg.append(el("button", { class: "segbtn" + (on ? " on " + (val || "none") : ""), onclick: () => { h[cur] = val; save(); render(); } }, lab));
+    }
+    return seg;
+  }
+
+  // Per-game objectives setup + live turn-by-turn capture tracker.
+  function objectivePanel(g) {
+    g.objectives = g.objectives || []; g.holds = g.holds || {}; g.baggage = g.baggage || { enabled: false, vp: "", mine: false, theirs: false };
+    const open = g.objectives.length || g.baggage.enabled;
+    const body = el("div", { class: "objbody" });
+
+    // --- setup: turns, objectives, baggage ---
+    const turnsIn = el("input", { class: "scoreinput tiny", type: "number", inputmode: "numeric", value: g.turns || 6, onchange: (e) => { g.turns = Math.max(1, parseInt(e.target.value, 10) || 6); if ((g.curTurn || 1) > g.turns) g.curTurn = g.turns; save(); render(); } });
+    body.append(el("div", { class: "objsetuprow" }, [
+      el("label", { class: "scorefield" }, [el("span", { class: "muted small" }, "Game length (turns)"), turnsIn]),
+      el("button", { class: "chip", onclick: () => { g.objectives.push(newObjective("Objective " + (g.objectives.length + 1), "", "end")); save(); render(); } }, "＋ Objective"),
+      el("button", { class: "chip", onclick: () => { g.objectives.push(newObjective("Strategic location", "", "end")); save(); render(); } }, "＋ Strategic location"),
+      el("button", { class: "chip", onclick: () => { g.objectives.push(newObjective("The Hill", "", "end")); save(); render(); } }, "＋ King of the Hill"),
+    ]));
+
+    // objective definition rows
+    for (const o of g.objectives) {
+      const modeSel = el("select", { class: "scoreinput", onchange: (e) => { o.mode = e.target.value; save(); render(); } });
+      for (const [v, t] of [["end", "Held at end"], ["perturn", "Each turn held"]]) modeSel.append(el("option", { value: v, selected: v === (o.mode || "perturn") ? "selected" : null }, t));
+      body.append(el("div", { class: "objdefrow" }, [
+        el("input", { class: "scoreinput grow", placeholder: "Objective name", value: o.name, onchange: (e) => { o.name = e.target.value; save(); render(); } }),
+        el("input", { class: "scoreinput tiny", type: "number", inputmode: "numeric", placeholder: "VP", value: o.vp, onchange: (e) => { o.vp = e.target.value; save(); render(); } }),
+        modeSel,
+        el("button", { class: "icon", title: "Remove", onclick: () => { g.objectives = g.objectives.filter((x) => x !== o); delete g.holds[o.id]; save(); render(); } }, "✕"),
+      ]));
+    }
+
+    // baggage
+    const bag = g.baggage;
+    const bagToggle = el("label", { class: "bagchk" }, [el("input", { type: "checkbox", checked: bag.enabled ? "checked" : null, onchange: (e) => { bag.enabled = e.target.checked; save(); render(); } }), el("span", {}, "Baggage trains")]);
+    const bagRow = el("div", { class: "objsetuprow" }, [bagToggle]);
+    if (bag.enabled) bagRow.append(el("label", { class: "scorefield" }, [el("span", { class: "muted small" }, "VP each"), el("input", { class: "scoreinput tiny", type: "number", inputmode: "numeric", value: bag.vp, onchange: (e) => { bag.vp = e.target.value; save(); render(); } })]));
+    body.append(bagRow);
+
+    // --- live tracker ---
+    if (g.objectives.length || bag.enabled) {
+      const cur = g.curTurn || 1, turns = g.turns || 6;
+      body.append(el("div", { class: "objturn" }, [
+        el("button", { class: "segbtn", title: "Previous turn", onclick: () => { if ((g.curTurn || 1) > 1) { g.curTurn = (g.curTurn || 1) - 1; save(); render(); } } }, "◀"),
+        el("b", {}, "Turn " + cur + " / " + turns),
+        el("button", { class: "segbtn", title: "Next turn", onclick: () => { if ((g.curTurn || 1) < turns) { g.curTurn = (g.curTurn || 1) + 1; save(); render(); } } }, "▶"),
+        el("span", { class: "muted small" }, "who holds each objective this turn:"),
+      ]));
+      for (const o of g.objectives) {
+        body.append(el("div", { class: "objliverow" }, [
+          el("div", { class: "objlabel" }, [el("b", {}, o.name || "Objective"), el("span", { class: "muted small" }, (num(o.vp) || 0) + " VP · " + (o.mode === "perturn" ? "each turn" : "at end"))]),
+          holderSeg(g, o.id),
+        ]));
+      }
+      if (bag.enabled) {
+        body.append(el("div", { class: "objliverow" }, [
+          el("div", { class: "objlabel" }, [el("b", {}, "Baggage trains"), el("span", { class: "muted small" }, (num(bag.vp) || 0) + " VP each")]),
+          el("div", { class: "holderseg" }, [
+            el("button", { class: "segbtn" + (bag.theirs ? " on me" : ""), onclick: () => { bag.theirs = !bag.theirs; save(); render(); } }, "You took theirs"),
+            el("button", { class: "segbtn" + (bag.mine ? " on them" : ""), onclick: () => { bag.mine = !bag.mine; save(); render(); } }, "They took yours"),
+          ]),
+        ]));
+      }
+    }
+
+    const det = el("details", { class: "objpanel" });
+    if (open) det.setAttribute("open", "");
+    det.append(el("summary", {}, "🎯 Objectives & live turn scoring"), body);
+    return det;
   }
 
   function statCell(label, val, base, lowerBetter) {

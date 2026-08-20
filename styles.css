@@ -545,3 +545,23 @@ body[data-theme="highelves"] button.big.roll { background: linear-gradient(180de
   margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line);
 }
 .tallytotal b { font-size: 1.5rem; color: var(--brass); }
+
+/* ---- Scoring: objectives & live turn tracker ----------------------------- */
+.effvp { margin-top: 8px; color: var(--brass); font-weight: 700; }
+.objpanel { margin-top: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 4px 12px 12px; }
+.objpanel > summary { cursor: pointer; font-weight: 700; color: var(--ink); padding: 8px 0; }
+.objbody { display: flex; flex-direction: column; gap: 8px; }
+.objsetuprow { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.objsetuprow .chip { cursor: pointer; background: var(--card2); }
+.objdefrow { display: flex; gap: 6px; align-items: center; }
+.objdefrow .scoreinput.grow { flex: 1; }
+.objturn { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.objliverow { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.objlabel { display: flex; flex-direction: column; }
+.holderseg { display: inline-flex; gap: 0; border: 1px solid var(--line2); border-radius: 10px; overflow: hidden; }
+.segbtn { font: inherit; font-weight: 700; padding: 8px 12px; background: var(--card); color: var(--muted); border: none; border-right: 1px solid var(--line2); cursor: pointer; }
+.holderseg .segbtn:last-child { border-right: none; }
+.segbtn.on.me { background: var(--good); color: #06210f; }
+.segbtn.on.them { background: var(--bad); color: #2a0a08; }
+.segbtn.on.none { background: var(--line2); color: var(--ink); }
+.bagchk { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--ink); }
