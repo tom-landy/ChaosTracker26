@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v38"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v39"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -302,6 +302,7 @@
   // Tournament scoring scales. w/d/l = tournament points for win/draw/loss.
   // manual = you type the battle points your event awards; none = VP only.
   const SCORE_SCALES = [
+    { id: "vpdiff20", name: "VP difference → 20 pts (Warfare 2026)", table: true, tpUnit: "TP" },
     { id: "wdl3", name: "Win / Draw / Loss — 3 / 1 / 0", w: 3, d: 1, l: 0 },
     { id: "wdl2", name: "Win / Draw / Loss — 2 / 1 / 0", w: 2, d: 1, l: 0 },
     { id: "wdl10", name: "Win / Draw / Loss — 10 / 5 / 0", w: 10, d: 5, l: 0 },
@@ -309,25 +310,48 @@
     { id: "vponly", name: "Victory Points only (no tournament points)", none: true },
   ];
   function scoreScale(sc) { return SCORE_SCALES.find((s) => s.id === (sc && sc.scale)) || SCORE_SCALES[0]; }
-  function gameResult(g) {
+  // Warfare 2026: tournament points from the VP difference (winner–loser).
+  // 0–150 = 10–10 (draw), then +1/–1 per 150 VP up to 20–0 at 1501+.
+  function vpDiffTP(g) {
+    const my = num(g.myVP), opp = num(g.oppVP);
+    if (my === "" || opp === "") return null;
+    const diff = my - opp, ad = Math.abs(diff);
+    if (ad <= 150) return 10; // draw band, both score 10
+    const winTP = Math.min(20, 10 + Math.ceil((ad - 150) / 150));
+    return diff > 0 ? winTP : 20 - winTP;
+  }
+  function gameResult(g, scale) {
     if (g.resultOverride) return g.resultOverride; // "W" | "D" | "L"
     const a = num(g.myVP), b = num(g.oppVP);
     if (a === "" || b === "") return "";
+    if (scale && scale.table) { const d = a - b; return Math.abs(d) <= 150 ? "D" : d > 0 ? "W" : "L"; }
     return a > b ? "W" : a < b ? "L" : "D";
   }
   function gameTP(g, scale) {
     if (scale.none) return null;
+    if (scale.table) { const t = vpDiffTP(g); return t == null ? 0 : t; }
     if (scale.manual) return num(g.tp) === "" ? 0 : num(g.tp);
-    const r = gameResult(g);
+    const r = gameResult(g, scale);
     return r === "W" ? scale.w : r === "D" ? scale.d : r === "L" ? scale.l : 0;
   }
-  // A game's total battle points = the scale's points + any secondary points.
+  // Secondary points fold into the total only for simple point scales (not the
+  // VP-difference table, where the table already captures the whole result).
   function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
-  function gameTotal(g, scale) { const base = gameTP(g, scale); return base == null ? null : base + gameSec(g); }
+  function gameTotal(g, scale) { const base = gameTP(g, scale); if (base == null) return null; return base + (scale.table ? 0 : gameSec(g)); }
   function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "" }; }
 
-  // Common Victory-Point line items for the tally helper (edit values freely).
-  const VP_TALLY_PRESETS = ["Unit destroyed / fled", "Unit reduced to ≤ half", "General slain", "BSB slain", "Standard captured", "Objective held", "Table quarter"];
+  // VP line items for the tally helper (Warfare 2026 triggers). Fixed-value
+  // ones prefill their points; %-of-points ones you enter (need the unit's pts).
+  const VP_TALLY_PRESETS = [
+    { label: "Unit/character destroyed (full pts)", pts: "" },
+    { label: "Fleeing at game end (½ pts)", pts: "" },
+    { label: "Reduced to ≤25% (½ pts)", pts: "" },
+    { label: "General slain", pts: 100 },
+    { label: "BSB killed", pts: 50 },
+    { label: "BSB captured", pts: 100 },
+    { label: "Standard captured", pts: 50 },
+    { label: "Objective", pts: "" },
+  ];
   // Guided VP builder: rows of {label, pts} that sum into the My/Their VP field.
   function vpTallyModal(g, which, onDone) {
     const key = which === "mine" ? "tallyMine" : "tallyOpp";
@@ -348,7 +372,7 @@
     }
     draw();
     const presetRow = el("div", { class: "tallypresets" });
-    for (const p of VP_TALLY_PRESETS) presetRow.append(el("button", { class: "chip", onclick: () => { rows.push({ label: p, pts: "" }); draw(); } }, "＋ " + p));
+    for (const p of VP_TALLY_PRESETS) presetRow.append(el("button", { class: "chip", onclick: () => { rows.push({ label: p.label, pts: p.pts === "" ? "" : String(p.pts) }); draw(); recalc(); } }, "＋ " + p.label));
     const body = el("div", {}, [
       el("p", { class: "muted small" }, "Add each thing you scored VP for and its points — the total fills in the VP box."),
       presetRow,
@@ -368,10 +392,10 @@
     const lines = [];
     lines.push((state.meta.name || "Army") + (sc.event ? " — " + sc.event : ""));
     let W = 0, Dr = 0, L = 0, bp = 0, vpF = 0, vpA = 0;
-    for (const g of sc.games) { const r = gameResult(g); if (r === "W") W++; else if (r === "D") Dr++; else if (r === "L") L++; const t = gameTotal(g, scale); if (t != null) bp += t; vpF += num(g.myVP) || 0; vpA += num(g.oppVP) || 0; }
-    lines.push("Record " + W + "-" + Dr + "-" + L + (scale.none ? "" : " · " + bp + " battle pts") + " · VP " + (vpF - vpA >= 0 ? "+" : "") + (vpF - vpA));
+    for (const g of sc.games) { const r = gameResult(g, scale); if (r === "W") W++; else if (r === "D") Dr++; else if (r === "L") L++; const t = gameTotal(g, scale); if (t != null) bp += t; vpF += num(g.myVP) || 0; vpA += num(g.oppVP) || 0; }
+    lines.push("Record " + W + "-" + Dr + "-" + L + (scale.none ? "" : " · " + bp + (scale.table ? " TP" : " battle pts")) + " · VP " + (vpF - vpA >= 0 ? "+" : "") + (vpF - vpA));
     sc.games.forEach((g, i) => {
-      const r = gameResult(g), rl = r === "W" ? "WIN" : r === "D" ? "DRAW" : r === "L" ? "LOSS" : "—";
+      const r = gameResult(g, scale), rl = r === "W" ? "WIN" : r === "D" ? "DRAW" : r === "L" ? "LOSS" : "—";
       const t = gameTotal(g, scale);
       lines.push("R" + (g.round || i + 1) + " vs " + (g.opponent || "?") + (g.oppFaction ? " (" + g.oppFaction + ")" : "") + ": " + rl + " " + (num(g.myVP) || 0) + "-" + (num(g.oppVP) || 0) + (t != null ? " [" + t + "]" : ""));
     });
@@ -397,7 +421,7 @@
     // --- summary strip ---
     let W = 0, Dr = 0, L = 0, vpF = 0, vpA = 0, bp = 0;
     for (const g of sc.games) {
-      const r = gameResult(g);
+      const r = gameResult(g, scale);
       if (r === "W") W++; else if (r === "D") Dr++; else if (r === "L") L++;
       if (num(g.myVP) !== "") vpF += num(g.myVP);
       if (num(g.oppVP) !== "") vpA += num(g.oppVP);
@@ -414,7 +438,7 @@
       ["VP against", vpA],
       ["VP diff", (vpF - vpA > 0 ? "+" : "") + (vpF - vpA)],
     ];
-    if (!scale.none) tiles.push(["Battle pts", bp]);
+    if (!scale.none) tiles.push([scale.table ? "Tournament pts" : "Battle pts", bp]);
     const strip = el("div", { class: "scoresum" });
     for (const [lab, val, sub] of tiles) strip.append(el("div", { class: "scoretile" }, [el("b", {}, String(val)), el("span", { class: "muted small" }, sub || lab)]));
     wrap.append(strip);
@@ -448,12 +472,15 @@
       ]));
     }
 
-    wrap.append(el("p", { class: "muted small scorenote", html: "Tap the ⚖ beside a VP box to tally it up from what you scored. Tournament-points scale is a best guess — tell me your event's exact system and I'll match it." }));
+    const noteHtml = scale.table
+      ? "Warfare 2026: tournament points come from the VP difference (0–150 = 10–10 draw, up to 20–0 at 1501+). Tap the ⚖ beside a VP box to tally it — General slain +100, BSB +50/+100, standard +50, destroyed = full pts, fleeing / ≤25% = half."
+      : "Tap the ⚖ beside a VP box to tally it up from what you scored.";
+    wrap.append(el("p", { class: "muted small scorenote", html: noteHtml }));
     root.append(wrap);
   }
 
   function gameCard(g, sc, scale, factionOpts) {
-    const r = gameResult(g);
+    const r = gameResult(g, scale);
     const rLabel = r === "W" ? "WIN" : r === "D" ? "DRAW" : r === "L" ? "LOSS" : "—";
     const rClass = r === "W" ? "win" : r === "D" ? "draw" : r === "L" ? "loss" : "";
     const total = gameTotal(g, scale);
@@ -480,7 +507,7 @@
       el("div", { class: "gameround" }, [el("span", { class: "muted small" }, "Round"), inp("round", { class: "scoreinput tiny" })]),
       el("div", { class: "gameopp" }, g.opponent ? g.opponent + (g.oppFaction ? " · " + g.oppFaction : "") : "New game"),
       el("span", { class: "resbadge " + rClass }, rLabel),
-      total != null ? el("span", { class: "tpbadge", title: sec ? gameTP(g, scale) + " + " + sec + " secondary" : "" }, total + " bp") : null,
+      total != null ? el("span", { class: "tpbadge", title: sec && !scale.table ? gameTP(g, scale) + " + " + sec + " secondary" : "" }, total + " " + (scale.tpUnit || "bp")) : null,
       el("button", { class: "icon del", title: "Delete game", onclick: () => { if (confirm("Delete this game?")) { sc.games = sc.games.filter((x) => x !== g); save(); render(); } } }, "✕"),
     ]);
 
@@ -492,7 +519,7 @@
       vpField("Their VP", "oppVP", "opp"),
       fld("Result", resSel),
       scale.manual ? fld("Battle pts", inp("tp", { type: "number", inputmode: "numeric", placeholder: "0" })) : null,
-      scale.none ? null : fld("Secondary pts", inp("secpts", { type: "number", inputmode: "numeric", placeholder: "0" })),
+      (scale.none || scale.table) ? null : fld("Secondary pts", inp("secpts", { type: "number", inputmode: "numeric", placeholder: "0" })),
       fld("Objectives", inp("secondary", { placeholder: "e.g. Held centre, Slay the Warlord" })),
     ]);
     const notes = fld("Notes", inp("notes", { placeholder: "How it went…" }));
