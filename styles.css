@@ -525,3 +525,23 @@ body[data-theme="highelves"] button.big.roll { background: linear-gradient(180de
 .grandtotal { margin-left: auto; text-align: right; }
 .grandtotal b { display: block; font-size: 1.4rem; color: var(--brass); }
 .scorenote { margin-top: 4px; }
+
+/* ---- Scoring: VP tally + secondary + actions ----------------------------- */
+.scoreactions { display: flex; gap: 8px; }
+.vprow { display: flex; gap: 6px; align-items: stretch; }
+.vprow .scoreinput { flex: 1; }
+.vptally {
+  flex: 0 0 auto; width: 40px; font-size: 1.1rem; line-height: 1;
+  background: var(--card2); color: var(--ink);
+  border: 1px solid var(--line2); border-radius: 10px; cursor: pointer;
+}
+.vptally:active { transform: translateY(1px); }
+.tallypresets { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.tallypresets .chip, .scoring .chip { cursor: pointer; background: var(--card2); }
+.tallylist { display: flex; flex-direction: column; gap: 6px; }
+.tallyrow { display: flex; gap: 6px; align-items: center; }
+.tallytotal {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line);
+}
+.tallytotal b { font-size: 1.5rem; color: var(--brass); }

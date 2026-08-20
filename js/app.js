@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v37"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v38"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -321,7 +321,64 @@
     const r = gameResult(g);
     return r === "W" ? scale.w : r === "D" ? scale.d : r === "L" ? scale.l : 0;
   }
-  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", tp: "", notes: "" }; }
+  // A game's total battle points = the scale's points + any secondary points.
+  function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
+  function gameTotal(g, scale) { const base = gameTP(g, scale); return base == null ? null : base + gameSec(g); }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "" }; }
+
+  // Common Victory-Point line items for the tally helper (edit values freely).
+  const VP_TALLY_PRESETS = ["Unit destroyed / fled", "Unit reduced to ≤ half", "General slain", "BSB slain", "Standard captured", "Objective held", "Table quarter"];
+  // Guided VP builder: rows of {label, pts} that sum into the My/Their VP field.
+  function vpTallyModal(g, which, onDone) {
+    const key = which === "mine" ? "tallyMine" : "tallyOpp";
+    const rows = (g[key] && g[key].length) ? clone(g[key]) : [{ label: "", pts: "" }];
+    const listWrap = el("div", { class: "tallylist" });
+    const totalEl = el("b", {}, "0");
+    function recalc() { let t = 0; for (const r of rows) t += num(r.pts) === "" ? 0 : num(r.pts); totalEl.textContent = String(t); return t; }
+    function draw() {
+      listWrap.innerHTML = "";
+      rows.forEach((r, i) => {
+        listWrap.append(el("div", { class: "tallyrow" }, [
+          el("input", { class: "scoreinput grow", placeholder: "What you scored", value: r.label, onchange: (e) => { r.label = e.target.value; } }),
+          el("input", { class: "scoreinput tiny", type: "number", inputmode: "numeric", placeholder: "0", value: r.pts, onchange: (e) => { r.pts = e.target.value; recalc(); } }),
+          el("button", { class: "icon", title: "Remove", onclick: () => { rows.splice(i, 1); if (!rows.length) rows.push({ label: "", pts: "" }); draw(); recalc(); } }, "✕"),
+        ]));
+      });
+      recalc();
+    }
+    draw();
+    const presetRow = el("div", { class: "tallypresets" });
+    for (const p of VP_TALLY_PRESETS) presetRow.append(el("button", { class: "chip", onclick: () => { rows.push({ label: p, pts: "" }); draw(); } }, "＋ " + p));
+    const body = el("div", {}, [
+      el("p", { class: "muted small" }, "Add each thing you scored VP for and its points — the total fills in the VP box."),
+      presetRow,
+      listWrap,
+      el("button", { class: "chip", onclick: () => { rows.push({ label: "", pts: "" }); draw(); } }, "＋ Blank row"),
+      el("div", { class: "tallytotal" }, [el("span", { class: "muted small" }, "Total VP"), totalEl]),
+    ]);
+    const foot = [
+      el("button", { class: "ghost", onclick: closeModal }, "Cancel"),
+      el("button", { class: "primary", onclick: () => { const t = recalc(); g[key] = rows.filter((r) => r.label || r.pts !== ""); g[which === "mine" ? "myVP" : "oppVP"] = String(t); save(); closeModal(); if (onDone) onDone(); } }, "Apply total"),
+    ];
+    openModal((which === "mine" ? "Your" : "Their") + " Victory Points — Round " + (g.round || "?"), body, foot);
+  }
+
+  // Copy a plain-text results summary (for reporting to a tournament organiser).
+  function copyResults(sc, scale) {
+    const lines = [];
+    lines.push((state.meta.name || "Army") + (sc.event ? " — " + sc.event : ""));
+    let W = 0, Dr = 0, L = 0, bp = 0, vpF = 0, vpA = 0;
+    for (const g of sc.games) { const r = gameResult(g); if (r === "W") W++; else if (r === "D") Dr++; else if (r === "L") L++; const t = gameTotal(g, scale); if (t != null) bp += t; vpF += num(g.myVP) || 0; vpA += num(g.oppVP) || 0; }
+    lines.push("Record " + W + "-" + Dr + "-" + L + (scale.none ? "" : " · " + bp + " battle pts") + " · VP " + (vpF - vpA >= 0 ? "+" : "") + (vpF - vpA));
+    sc.games.forEach((g, i) => {
+      const r = gameResult(g), rl = r === "W" ? "WIN" : r === "D" ? "DRAW" : r === "L" ? "LOSS" : "—";
+      const t = gameTotal(g, scale);
+      lines.push("R" + (g.round || i + 1) + " vs " + (g.opponent || "?") + (g.oppFaction ? " (" + g.oppFaction + ")" : "") + ": " + rl + " " + (num(g.myVP) || 0) + "-" + (num(g.oppVP) || 0) + (t != null ? " [" + t + "]" : ""));
+    });
+    const text = lines.join("\n");
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => flash("Results copied"), () => flash("Copy failed"));
+    else { try { const ta = el("textarea", {}, text); document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); flash("Results copied"); } catch (e) { flash("Copy not supported"); } }
+  }
 
   function renderScoring(root) {
     const sc = state.scoring || (state.scoring = newScoring());
@@ -344,7 +401,7 @@
       if (r === "W") W++; else if (r === "D") Dr++; else if (r === "L") L++;
       if (num(g.myVP) !== "") vpF += num(g.myVP);
       if (num(g.oppVP) !== "") vpA += num(g.oppVP);
-      const tp = gameTP(g, scale);
+      const tp = gameTotal(g, scale);
       if (tp != null) bp += tp;
     }
     const paint = num(sc.bonuses.painting) === "" ? 0 : num(sc.bonuses.painting);
@@ -361,6 +418,9 @@
     const strip = el("div", { class: "scoresum" });
     for (const [lab, val, sub] of tiles) strip.append(el("div", { class: "scoretile" }, [el("b", {}, String(val)), el("span", { class: "muted small" }, sub || lab)]));
     wrap.append(strip);
+    if (sc.games.length) wrap.append(el("div", { class: "scoreactions" }, [
+      el("button", { class: "ghost small", onclick: () => copyResults(sc, scale) }, "⧉ Copy results"),
+    ]));
 
     // --- games ---
     if (!sc.games.length) {
@@ -388,7 +448,7 @@
       ]));
     }
 
-    wrap.append(el("p", { class: "muted small scorenote", html: "Enter Victory Points for each game yourself for now. Once per-unit points are captured on import, I can total VP from your casualties automatically. Tournament-points scale is a best guess — tell me your event's exact system and I'll match it." }));
+    wrap.append(el("p", { class: "muted small scorenote", html: "Tap the ⚖ beside a VP box to tally it up from what you scored. Tournament-points scale is a best guess — tell me your event's exact system and I'll match it." }));
     root.append(wrap);
   }
 
@@ -396,10 +456,19 @@
     const r = gameResult(g);
     const rLabel = r === "W" ? "WIN" : r === "D" ? "DRAW" : r === "L" ? "LOSS" : "—";
     const rClass = r === "W" ? "win" : r === "D" ? "draw" : r === "L" ? "loss" : "";
-    const tp = gameTP(g, scale);
+    const total = gameTotal(g, scale);
+    const sec = gameSec(g);
 
     const fld = (label, node) => el("label", { class: "scorefield" }, [el("span", { class: "muted small" }, label), node]);
     const inp = (key, opts) => el("input", Object.assign({ class: "scoreinput", value: g[key] == null ? "" : g[key], onchange: (e) => { g[key] = e.target.value; save(); render(); } }, opts || {}));
+    // A VP field with a "⚖ tally" helper button beside it.
+    const vpField = (label, key, which) => el("label", { class: "scorefield" }, [
+      el("span", { class: "muted small" }, label),
+      el("div", { class: "vprow" }, [
+        el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: g[key] == null ? "" : g[key], onchange: (e) => { g[key] = e.target.value; save(); render(); } }),
+        el("button", { class: "vptally", title: "Tally VP", onclick: () => vpTallyModal(g, which, render) }, "⚖"),
+      ]),
+    ]);
 
     const oppFacSel = el("select", { class: "scoreinput", onchange: (e) => { g.oppFaction = e.target.value; save(); } });
     for (const f of factionOpts) oppFacSel.append(el("option", { value: f, selected: f === g.oppFaction ? "selected" : null }, f || "—"));
@@ -411,7 +480,7 @@
       el("div", { class: "gameround" }, [el("span", { class: "muted small" }, "Round"), inp("round", { class: "scoreinput tiny" })]),
       el("div", { class: "gameopp" }, g.opponent ? g.opponent + (g.oppFaction ? " · " + g.oppFaction : "") : "New game"),
       el("span", { class: "resbadge " + rClass }, rLabel),
-      tp != null ? el("span", { class: "tpbadge" }, tp + " bp") : null,
+      total != null ? el("span", { class: "tpbadge", title: sec ? gameTP(g, scale) + " + " + sec + " secondary" : "" }, total + " bp") : null,
       el("button", { class: "icon del", title: "Delete game", onclick: () => { if (confirm("Delete this game?")) { sc.games = sc.games.filter((x) => x !== g); save(); render(); } } }, "✕"),
     ]);
 
@@ -419,11 +488,12 @@
       fld("Opponent", inp("opponent", { placeholder: "Name" })),
       fld("Their army", oppFacSel),
       fld("Scenario / mission", inp("scenario", { placeholder: "e.g. Meeting Engagement" })),
-      fld("Your VP", inp("myVP", { type: "number", inputmode: "numeric", placeholder: "0" })),
-      fld("Their VP", inp("oppVP", { type: "number", inputmode: "numeric", placeholder: "0" })),
+      vpField("Your VP", "myVP", "mine"),
+      vpField("Their VP", "oppVP", "opp"),
       fld("Result", resSel),
       scale.manual ? fld("Battle pts", inp("tp", { type: "number", inputmode: "numeric", placeholder: "0" })) : null,
-      fld("Secondary / objectives", inp("secondary", { placeholder: "Objectives, bonus pts…" })),
+      scale.none ? null : fld("Secondary pts", inp("secpts", { type: "number", inputmode: "numeric", placeholder: "0" })),
+      fld("Objectives", inp("secondary", { placeholder: "e.g. Held centre, Slay the Warlord" })),
     ]);
     const notes = fld("Notes", inp("notes", { placeholder: "How it went…" }));
     notes.classList.add("full");
