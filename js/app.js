@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v45"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v46"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -348,7 +348,49 @@
   // VP-difference table, where the table already captures the whole result).
   function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
   function gameTotal(g, scale) { const base = gameTP(g, scale); if (base == null) return null; return base + (scale.table ? 0 : gameSec(g)); }
-  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objVal: "100", bagVal: "250", addsMine: [], addsThem: [] }; }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objVal: "100", bagVal: "250", bagOn: true, addsMine: [], addsThem: [] }; }
+
+  // Setup dialog shown when adding (or editing) a game — pick the mission's VP
+  // values and whether baggage trains are in use, then lock them in.
+  function openGameSetup(sc, game) {
+    const isNew = !game;
+    const g = game || newGame(sc);
+    const factionOpts = [""].concat(Object.keys(window.FACTIONS || {}).map((k) => window.FACTIONS[k].factionName)).concat(["Other"]);
+    const field = (label, node) => el("label", { class: "scorefield full" }, [el("span", { class: "muted small" }, label), node]);
+    const roundIn = el("input", { class: "scoreinput", value: g.round || "" });
+    const oppIn = el("input", { class: "scoreinput", placeholder: "Name", value: g.opponent || "" });
+    const facSel = el("select", { class: "scoreinput" });
+    for (const f of factionOpts) facSel.append(el("option", { value: f, selected: f === g.oppFaction ? "selected" : null }, f || "—"));
+    const scenIn = el("input", { class: "scoreinput", placeholder: "e.g. King of the Hill", value: g.scenario || "" });
+    const objIn = el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: g.objVal == null ? "100" : g.objVal });
+    const bagChk = el("input", { type: "checkbox", checked: (g.bagOn == null ? true : g.bagOn) ? "checked" : null });
+    const bagIn = el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: g.bagVal == null ? "250" : g.bagVal });
+    const bagValWrap = field("Baggage train VP (each)", bagIn);
+    const syncBag = () => { bagValWrap.style.display = bagChk.checked ? "" : "none"; };
+    bagChk.addEventListener("change", syncBag); syncBag();
+
+    const body = el("div", { class: "setupform" }, [
+      el("div", { class: "setuprow2" }, [field("Round", roundIn), field("Their army", facSel)]),
+      field("Opponent", oppIn),
+      field("Scenario / mission", scenIn),
+      el("div", { class: "setupsep" }, "Victory Points this game"),
+      field("Objective VP (each claim)", objIn),
+      el("label", { class: "bagchk full" }, [bagChk, el("span", {}, "Baggage trains in use")]),
+      bagValWrap,
+    ]);
+    const start = el("button", { class: "primary", onclick: () => {
+      g.round = roundIn.value.trim() || g.round;
+      g.opponent = oppIn.value.trim();
+      g.oppFaction = facSel.value;
+      g.scenario = scenIn.value.trim();
+      g.objVal = objIn.value === "" ? "0" : objIn.value;
+      g.bagOn = bagChk.checked;
+      g.bagVal = bagIn.value === "" ? "0" : bagIn.value;
+      if (isNew) sc.games.push(g);
+      save(); closeModal(); render();
+    } }, isNew ? "Start game ▶" : "Save");
+    openModal(isNew ? "New game" : "Edit game setup", body, [el("button", { class: "ghost", onclick: closeModal }, "Cancel"), start]);
+  }
 
   // VP line items for the tally helper (Warfare 2026 triggers). Fixed-value
   // ones prefill their points; %-of-points ones you enter (need the unit's pts).
@@ -466,7 +508,7 @@
     const factionOpts = [""].concat(Object.keys(window.FACTIONS || {}).map((k) => window.FACTIONS[k].factionName)).concat(["Other"]);
     for (const g of sc.games) wrap.append(gameCard(g, sc, scale, factionOpts));
 
-    wrap.append(el("button", { class: "primary addgame", onclick: () => { sc.games.push(newGame(sc)); save(); render(); } }, "＋ Add game"));
+    wrap.append(el("button", { class: "primary addgame", onclick: () => openGameSetup(sc, null) }, "＋ Add game"));
 
     // --- overall bonuses (many events add painting / sportsmanship) ---
     if (!scale.none) {
@@ -539,14 +581,16 @@
     const om = objVP(g, "me"), ot = objVP(g, "them");
     const effRow = (om || ot) ? el("div", { class: "effvp small" }, "VP incl. objectives — You " + effMy(g) + " · Them " + effOpp(g) + "  (" + (om ? "+" + om : "0") + " / " + (ot ? "+" + ot : "0") + " objectives)") : null;
 
-    return el("div", { class: "gamecard " + rClass }, [head, grid, effRow, objectivePanel(g)]);
+    return el("div", { class: "gamecard " + rClass }, [head, grid, effRow, objectivePanel(g, sc)]);
   }
 
   // Big-button objective/baggage scorer: tap ＋Objective / ＋Baggage under YOU or
-  // THEM to add points; ↩ Undo takes the last one back. Folds into the game VP.
-  function objectivePanel(g) {
+  // THEM to add points; ↩ Undo takes the last one back. VP values are locked in
+  // from the game setup (edit via the ✎ button). Folds into the game VP.
+  function objectivePanel(g, sc) {
     if (g.objVal == null) g.objVal = "100";
     if (g.bagVal == null) g.bagVal = "250";
+    if (g.bagOn == null) g.bagOn = true;
     g.addsMine = g.addsMine || []; g.addsThem = g.addsThem || [];
     const objVal = num(g.objVal) || 0, bagVal = num(g.bagVal) || 0;
 
@@ -564,27 +608,26 @@
     };
     const col = (side, label, cls) => {
       const stack = side === "me" ? g.addsMine : g.addsThem;
-      return el("div", { class: "bigcol " + cls }, [
+      const btns = [
         el("div", { class: "bigcolh" }, label),
         el("div", { class: "bigtotal" }, String(num(side === "me" ? g.objMine : g.objThem) || 0)),
         el("button", { class: "bigbtn", onclick: () => add(side, objVal) }, ["＋ Objective", el("span", { class: "bigsub" }, "+" + objVal)]),
-        el("button", { class: "bigbtn", onclick: () => add(side, bagVal) }, ["＋ Baggage", el("span", { class: "bigsub" }, "+" + bagVal)]),
-        el("button", { class: "bigbtn undo", disabled: stack.length ? null : "disabled", onclick: () => undo(side) }, "↩ Undo"),
-      ]);
+      ];
+      if (g.bagOn) btns.push(el("button", { class: "bigbtn", onclick: () => add(side, bagVal) }, ["＋ Baggage", el("span", { class: "bigsub" }, "+" + bagVal)]));
+      btns.push(el("button", { class: "bigbtn undo", disabled: stack.length ? null : "disabled", onclick: () => undo(side) }, "↩ Undo"));
+      return el("div", { class: "bigcol " + cls }, btns);
     };
 
-    // Always-visible, editable point values for this mission.
-    const valInput = (label, key) => el("label", { class: "objval" }, [
-      el("span", { class: "muted small" }, label),
-      el("input", { class: "scoreinput", type: "number", inputmode: "numeric", value: g[key], onchange: (e) => { g[key] = e.target.value; save(); render(); } }),
-      el("span", { class: "muted small" }, "VP"),
+    // Locked-in VP values from setup, with an edit affordance.
+    const setupLine = el("div", { class: "objsetupline" }, [
+      el("span", { class: "muted small" }, "Objective " + objVal + " VP" + (g.bagOn ? "  ·  Baggage " + bagVal + " VP" : "  ·  no baggage")),
+      el("button", { class: "chip", onclick: () => openGameSetup(sc, g) }, "✎ Edit"),
     ]);
 
     return el("div", { class: "objpanel" }, [
       el("div", { class: "objpanelhead" }, "🎯 Objectives & baggage"),
-      el("div", { class: "objvalsrow" }, [valInput("Each objective", "objVal"), valInput("Each baggage", "bagVal")]),
+      setupLine,
       el("div", { class: "bigcols" }, [col("me", "YOU", "you"), col("them", "THEM", "them")]),
-      el("p", { class: "muted small objhint" }, "Set the VP above to match your mission (e.g. an objective worth 30 each turn — tap it each turn). Tap ＋ under YOU or THEM to score."),
     ]);
   }
 
