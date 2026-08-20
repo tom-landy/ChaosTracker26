@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v36"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v37"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -20,7 +20,8 @@
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function rawLoad() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; } }
   function newId() { return "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-  function newArmy(name) { return { id: newId(), meta: { name: name || "My Army", points: "" }, units: [], turn: 1, faction: "warriors-of-chaos" }; }
+  function newScoring() { return { event: "", scale: "wdl3", bonuses: { painting: "", sports: "" }, games: [] }; }
+  function newArmy(name) { return { id: newId(), meta: { name: name || "My Army", points: "" }, units: [], turn: 1, faction: "warriors-of-chaos", scoring: newScoring() }; }
 
   // ---- state: a database of armies (all client-side in localStorage) --------
   let DB = (function migrate(raw) {
@@ -38,7 +39,7 @@
   let state = activeArmy(); // the army currently being viewed/edited
 
   // Normalise every army, then run shared/data migrations across all of them.
-  for (const a of DB.armies) { if (!a.id) a.id = newId(); if (!a.meta) a.meta = { name: "My Army", points: "" }; if (!a.units) a.units = []; if (!a.turn) a.turn = 1; if (!a.faction) a.faction = "warriors-of-chaos"; for (const u of a.units) { if (u.fleeing && !u.status) { u.status = "fleeing"; delete u.fleeing; } } }
+  for (const a of DB.armies) { if (!a.id) a.id = newId(); if (!a.meta) a.meta = { name: "My Army", points: "" }; if (!a.units) a.units = []; if (!a.turn) a.turn = 1; if (!a.faction) a.faction = "warriors-of-chaos"; if (!a.scoring) a.scoring = newScoring(); if (!a.scoring.bonuses) a.scoring.bonuses = { painting: "", sports: "" }; if (!Array.isArray(a.scoring.games)) a.scoring.games = []; for (const u of a.units) { if (u.fleeing && !u.status) { u.status = "fleeing"; delete u.fleeing; } } }
   if (!DB.activeId || !activeArmy()) DB.activeId = DB.armies[0].id;
   if (!DB.gaze || DB.gazeVersion !== GAZE_VERSION) { DB.gaze = clone(D.GAZE_REWARDS); DB.gazeVersion = GAZE_VERSION; save(); }
   if (DB.unitVersion !== UNIT_VERSION) {
@@ -237,6 +238,9 @@
     return n;
   }
 
+  let view = "roster"; // "roster" | "scoring"
+  function setView(v) { view = v; render(); }
+
   function render() {
     D = factionData(state.faction); // switch data + theme to the active army's faction
     document.body.setAttribute("data-theme", D.theme || "chaos");
@@ -249,8 +253,14 @@
       for (const a of DB.armies) sel.append(el("option", { value: a.id, selected: a.id === DB.activeId ? "selected" : null }, (a.meta && a.meta.name) || "(unnamed)"));
     }
     const del = $("#btnDelArmy"); if (del) del.disabled = DB.armies.length <= 1;
+    const tr = $("#tabRoster"), ts = $("#tabScoring");
+    if (tr) tr.classList.toggle("active", view === "roster");
+    if (ts) ts.classList.toggle("active", view === "scoring");
+    // turn box is roster-only
+    const turnbox = $(".turnbox"); if (turnbox) turnbox.style.display = view === "scoring" ? "none" : "";
     const root = $("#roster");
     root.innerHTML = "";
+    if (view === "scoring") { renderScoring(root); return; }
     if (!state.units.length) {
       root.append(el("div", { class: "empty" }, [
         el("p", { html: "No army loaded." }),
@@ -286,6 +296,140 @@
       if (u.category !== lastCat) { root.append(el("h2", { class: "cat" }, u.category)); lastCat = u.category; }
       root.append(unitCard(u));
     }
+  }
+
+  // ---- scoring -------------------------------------------------------------
+  // Tournament scoring scales. w/d/l = tournament points for win/draw/loss.
+  // manual = you type the battle points your event awards; none = VP only.
+  const SCORE_SCALES = [
+    { id: "wdl3", name: "Win / Draw / Loss — 3 / 1 / 0", w: 3, d: 1, l: 0 },
+    { id: "wdl2", name: "Win / Draw / Loss — 2 / 1 / 0", w: 2, d: 1, l: 0 },
+    { id: "wdl10", name: "Win / Draw / Loss — 10 / 5 / 0", w: 10, d: 5, l: 0 },
+    { id: "margin", name: "Battle points (enter each game manually)", manual: true },
+    { id: "vponly", name: "Victory Points only (no tournament points)", none: true },
+  ];
+  function scoreScale(sc) { return SCORE_SCALES.find((s) => s.id === (sc && sc.scale)) || SCORE_SCALES[0]; }
+  function gameResult(g) {
+    if (g.resultOverride) return g.resultOverride; // "W" | "D" | "L"
+    const a = num(g.myVP), b = num(g.oppVP);
+    if (a === "" || b === "") return "";
+    return a > b ? "W" : a < b ? "L" : "D";
+  }
+  function gameTP(g, scale) {
+    if (scale.none) return null;
+    if (scale.manual) return num(g.tp) === "" ? 0 : num(g.tp);
+    const r = gameResult(g);
+    return r === "W" ? scale.w : r === "D" ? scale.d : r === "L" ? scale.l : 0;
+  }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", tp: "", notes: "" }; }
+
+  function renderScoring(root) {
+    const sc = state.scoring || (state.scoring = newScoring());
+    const scale = scoreScale(sc);
+    const wrap = el("div", { class: "scoring" });
+
+    // --- event + scale row ---
+    const eventInput = el("input", { class: "scoreinput grow", placeholder: "Event / campaign name (optional)", value: sc.event || "", onchange: (e) => { sc.event = e.target.value; save(); } });
+    const scaleSel = el("select", { class: "scoreinput", onchange: (e) => { sc.scale = e.target.value; save(); render(); } });
+    for (const s of SCORE_SCALES) scaleSel.append(el("option", { value: s.id, selected: s.id === scale.id ? "selected" : null }, s.name));
+    wrap.append(el("div", { class: "scorehead" }, [
+      el("label", { class: "scorefield grow" }, [el("span", { class: "muted small" }, "🏆 Event"), eventInput]),
+      el("label", { class: "scorefield" }, [el("span", { class: "muted small" }, "Scoring"), scaleSel]),
+    ]));
+
+    // --- summary strip ---
+    let W = 0, Dr = 0, L = 0, vpF = 0, vpA = 0, bp = 0;
+    for (const g of sc.games) {
+      const r = gameResult(g);
+      if (r === "W") W++; else if (r === "D") Dr++; else if (r === "L") L++;
+      if (num(g.myVP) !== "") vpF += num(g.myVP);
+      if (num(g.oppVP) !== "") vpA += num(g.oppVP);
+      const tp = gameTP(g, scale);
+      if (tp != null) bp += tp;
+    }
+    const paint = num(sc.bonuses.painting) === "" ? 0 : num(sc.bonuses.painting);
+    const sports = num(sc.bonuses.sports) === "" ? 0 : num(sc.bonuses.sports);
+    const grand = bp + paint + sports;
+    const tiles = [
+      ["Games", sc.games.length],
+      ["Record", W + "–" + Dr + "–" + L, "W–D–L"],
+      ["VP for", vpF],
+      ["VP against", vpA],
+      ["VP diff", (vpF - vpA > 0 ? "+" : "") + (vpF - vpA)],
+    ];
+    if (!scale.none) tiles.push(["Battle pts", bp]);
+    const strip = el("div", { class: "scoresum" });
+    for (const [lab, val, sub] of tiles) strip.append(el("div", { class: "scoretile" }, [el("b", {}, String(val)), el("span", { class: "muted small" }, sub || lab)]));
+    wrap.append(strip);
+
+    // --- games ---
+    if (!sc.games.length) {
+      wrap.append(el("div", { class: "empty" }, [
+        el("p", { html: "No games recorded yet." }),
+        el("p", { class: "muted small", html: "Add a game after each round to build up your tournament record." }),
+      ]));
+    }
+    const factionOpts = [""].concat(Object.keys(window.FACTIONS || {}).map((k) => window.FACTIONS[k].factionName)).concat(["Other"]);
+    for (const g of sc.games) wrap.append(gameCard(g, sc, scale, factionOpts));
+
+    wrap.append(el("button", { class: "primary addgame", onclick: () => { sc.games.push(newGame(sc)); save(); render(); } }, "＋ Add game"));
+
+    // --- overall bonuses (many events add painting / sportsmanship) ---
+    if (!scale.none) {
+      const paintIn = el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: sc.bonuses.painting, onchange: (e) => { sc.bonuses.painting = e.target.value; save(); render(); } });
+      const sportsIn = el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: sc.bonuses.sports, onchange: (e) => { sc.bonuses.sports = e.target.value; save(); render(); } });
+      wrap.append(el("details", { class: "scorebonus" }, [
+        el("summary", {}, "Overall bonuses & grand total"),
+        el("div", { class: "bonusrow" }, [
+          el("label", { class: "scorefield" }, [el("span", { class: "muted small" }, "Painting"), paintIn]),
+          el("label", { class: "scorefield" }, [el("span", { class: "muted small" }, "Sportsmanship"), sportsIn]),
+          el("div", { class: "grandtotal" }, [el("span", { class: "muted small" }, "Grand total"), el("b", {}, String(grand))]),
+        ]),
+      ]));
+    }
+
+    wrap.append(el("p", { class: "muted small scorenote", html: "Enter Victory Points for each game yourself for now. Once per-unit points are captured on import, I can total VP from your casualties automatically. Tournament-points scale is a best guess — tell me your event's exact system and I'll match it." }));
+    root.append(wrap);
+  }
+
+  function gameCard(g, sc, scale, factionOpts) {
+    const r = gameResult(g);
+    const rLabel = r === "W" ? "WIN" : r === "D" ? "DRAW" : r === "L" ? "LOSS" : "—";
+    const rClass = r === "W" ? "win" : r === "D" ? "draw" : r === "L" ? "loss" : "";
+    const tp = gameTP(g, scale);
+
+    const fld = (label, node) => el("label", { class: "scorefield" }, [el("span", { class: "muted small" }, label), node]);
+    const inp = (key, opts) => el("input", Object.assign({ class: "scoreinput", value: g[key] == null ? "" : g[key], onchange: (e) => { g[key] = e.target.value; save(); render(); } }, opts || {}));
+
+    const oppFacSel = el("select", { class: "scoreinput", onchange: (e) => { g.oppFaction = e.target.value; save(); } });
+    for (const f of factionOpts) oppFacSel.append(el("option", { value: f, selected: f === g.oppFaction ? "selected" : null }, f || "—"));
+
+    const resSel = el("select", { class: "scoreinput", onchange: (e) => { g.resultOverride = e.target.value; save(); render(); } });
+    for (const [v, t] of [["", "Auto (by VP)"], ["W", "Win"], ["D", "Draw"], ["L", "Loss"]]) resSel.append(el("option", { value: v, selected: v === (g.resultOverride || "") ? "selected" : null }, t));
+
+    const head = el("div", { class: "gamehead" }, [
+      el("div", { class: "gameround" }, [el("span", { class: "muted small" }, "Round"), inp("round", { class: "scoreinput tiny" })]),
+      el("div", { class: "gameopp" }, g.opponent ? g.opponent + (g.oppFaction ? " · " + g.oppFaction : "") : "New game"),
+      el("span", { class: "resbadge " + rClass }, rLabel),
+      tp != null ? el("span", { class: "tpbadge" }, tp + " bp") : null,
+      el("button", { class: "icon del", title: "Delete game", onclick: () => { if (confirm("Delete this game?")) { sc.games = sc.games.filter((x) => x !== g); save(); render(); } } }, "✕"),
+    ]);
+
+    const grid = el("div", { class: "gamegrid" }, [
+      fld("Opponent", inp("opponent", { placeholder: "Name" })),
+      fld("Their army", oppFacSel),
+      fld("Scenario / mission", inp("scenario", { placeholder: "e.g. Meeting Engagement" })),
+      fld("Your VP", inp("myVP", { type: "number", inputmode: "numeric", placeholder: "0" })),
+      fld("Their VP", inp("oppVP", { type: "number", inputmode: "numeric", placeholder: "0" })),
+      fld("Result", resSel),
+      scale.manual ? fld("Battle pts", inp("tp", { type: "number", inputmode: "numeric", placeholder: "0" })) : null,
+      fld("Secondary / objectives", inp("secondary", { placeholder: "Objectives, bonus pts…" })),
+    ]);
+    const notes = fld("Notes", inp("notes", { placeholder: "How it went…" }));
+    notes.classList.add("full");
+    grid.append(notes);
+
+    return el("div", { class: "gamecard " + rClass }, [head, grid]);
   }
 
   function statCell(label, val, base, lowerBetter) {
@@ -993,6 +1137,10 @@
     $("#btnBackup").addEventListener("click", backup);
     $("#btnRestore").addEventListener("click", restore);
     $("#btnHelp").addEventListener("click", helpModal);
+    // view tabs (Roster / Scoring)
+    const tr = $("#tabRoster"); if (tr) tr.addEventListener("click", () => setView("roster"));
+    const ts = $("#tabScoring"); if (ts) ts.addEventListener("click", () => setView("scoring"));
+    const bs = $("#btnScoring"); if (bs) bs.addEventListener("click", () => setView("scoring"));
     const ver = $("#appVer"); if (ver) ver.textContent = "ChaosTracker26 · " + APP_VERSION + " · " + APP_DATE;
     // menu open/close
     const menuPanel = $("#menuPanel");

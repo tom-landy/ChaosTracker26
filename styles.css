@@ -453,3 +453,75 @@ body[data-theme="highelves"] .card { --mk: #7fb4dc; --mk-soft: rgba(150,205,238,
 body[data-theme="highelves"] .topbar { background: linear-gradient(180deg, rgba(19,44,71,0.96), rgba(10,20,32,0.86)); }
 body[data-theme="highelves"] button.primary,
 body[data-theme="highelves"] button.big.roll { background: linear-gradient(180deg, #e6f1fb, #9fc0da); border-color: #6d94b5; color: #0c2033; box-shadow: 0 2px 0 #5a809f, 0 6px 16px rgba(185,215,240,0.28); }
+
+/* ---- View tabs (Roster / Scoring) ---------------------------------------- */
+.viewtabs {
+  display: flex;
+  gap: 6px;
+  max-width: 820px;
+  margin: 8px auto 0;
+  padding: 0 12px;
+}
+.viewtab {
+  flex: 1;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  cursor: pointer;
+}
+.viewtab.active {
+  color: var(--ink);
+  background: var(--card2);
+  border-color: var(--line2);
+  box-shadow: inset 0 -3px 0 var(--brass);
+}
+
+/* ---- Scoring section ------------------------------------------------------ */
+.scoring { max-width: 820px; margin: 0 auto; padding: 4px 12px 40px; display: flex; flex-direction: column; gap: 12px; }
+.scorehead { display: flex; gap: 10px; flex-wrap: wrap; }
+.scorefield { display: flex; flex-direction: column; gap: 3px; min-width: 120px; }
+.scorefield.grow, .scorehead .grow { flex: 1; }
+.scorefield.full { flex-basis: 100%; }
+.scoreinput {
+  font: inherit; color: var(--ink); background: var(--bg2);
+  border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; width: 100%;
+}
+.scoreinput.tiny { width: 3.2em; padding: 6px 8px; text-align: center; }
+.scoreinput:focus { outline: none; border-color: var(--brass); }
+
+.scoresum { display: flex; flex-wrap: wrap; gap: 8px; }
+.scoretile {
+  flex: 1; min-width: 84px; text-align: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 6px;
+}
+.scoretile b { display: block; font-size: 1.4rem; line-height: 1.1; color: var(--ink); }
+
+.gamecard { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--line2); border-radius: 12px; padding: 10px 12px; }
+.gamecard.win { border-left-color: var(--good); }
+.gamecard.loss { border-left-color: var(--bad); }
+.gamecard.draw { border-left-color: var(--brass); }
+.gamehead { display: flex; align-items: center; gap: 10px; }
+.gameround { display: flex; align-items: center; gap: 6px; }
+.gameopp { flex: 1; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resbadge { font-weight: 800; font-size: .72rem; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px; background: var(--line); color: var(--ink); }
+.resbadge.win { background: var(--good); color: #06210f; }
+.resbadge.loss { background: var(--bad); color: #2a0a08; }
+.resbadge.draw { background: var(--brass); color: #241a05; }
+.tpbadge { font-weight: 700; font-size: .72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px; }
+.gamehead .del { margin-left: 2px; }
+.gamegrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+.gamegrid .scorefield.full { grid-column: 1 / -1; }
+@media (min-width: 620px) { .gamegrid { grid-template-columns: repeat(3, 1fr); } }
+
+.addgame { align-self: flex-start; }
+.scorebonus { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; }
+.scorebonus summary { cursor: pointer; font-weight: 700; color: var(--ink); padding: 6px 0; }
+.bonusrow { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; padding-bottom: 8px; }
+.grandtotal { margin-left: auto; text-align: right; }
+.grandtotal b { display: block; font-size: 1.4rem; color: var(--brass); }
+.scorenote { margin-top: 4px; }

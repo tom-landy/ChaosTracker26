@@ -31,6 +31,7 @@
         <button id="btnMenu" class="iconbtn" aria-haspopup="true" aria-label="Menu" title="Menu">☰</button>
         <div id="menuPanel" class="menupanel" hidden>
           <button id="btnImport">📋 Import list</button>
+          <button id="btnScoring">🏆 Scoring</button>
           <div class="menu-sep"></div>
           <button id="btnNewArmy">🆕 New army</button>
           <button id="btnRenameArmy">✎ Rename army</button>
@@ -50,6 +51,11 @@
   </header>
   <input id="restoreFile" type="file" accept=".json,application/json" hidden />
   <a id="dlAnchor" hidden></a>
+
+  <nav class="viewtabs" role="tablist">
+    <button id="tabRoster" class="viewtab active" role="tab">⚔ Roster</button>
+    <button id="tabScoring" class="viewtab" role="tab">🏆 Scoring</button>
+  </nav>
 
   <main id="roster" class="roster"></main>
 
