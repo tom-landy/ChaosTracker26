@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v39"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v40"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -1115,6 +1115,27 @@
     setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 1800);
   }
 
+  // Manual "Check for updates": force the service worker to look for a new
+  // version and, if one is ready, activate it (controllerchange then reloads).
+  function checkForUpdate() {
+    if (!("serviceWorker" in navigator)) { location.reload(); return; }
+    flash("Checking for updates…");
+    navigator.serviceWorker.getRegistration().then((reg) => {
+      if (!reg) { location.reload(); return; }
+      const activate = (w) => w && w.postMessage({ type: "SKIP_WAITING" });
+      return reg.update().then(() => {
+        if (reg.waiting) { activate(reg.waiting); return; }      // update ready → apply
+        if (reg.installing) {                                     // still downloading → apply when ready
+          reg.installing.addEventListener("statechange", function () {
+            if (this.state === "installed" && reg.waiting) activate(reg.waiting);
+          });
+          return;
+        }
+        flash("You're on the latest version (" + APP_VERSION + ")");
+      });
+    }).catch(() => flash("Update check failed — check your connection"));
+  }
+
   // Reset combat state for the current army (keep roster, marks and magic items).
   function newBattle() {
     if (!confirm("Start a new battle for “" + (state.meta.name || "this army") + "”?\nClears wounds, casualties, Gaze rewards and spells (keeps the roster, marks & items).")) return;
@@ -1234,6 +1255,7 @@
     $("#btnBackup").addEventListener("click", backup);
     $("#btnRestore").addEventListener("click", restore);
     $("#btnHelp").addEventListener("click", helpModal);
+    const bu = $("#btnUpdate"); if (bu) bu.addEventListener("click", checkForUpdate);
     // view tabs (Roster / Scoring)
     const tr = $("#tabRoster"); if (tr) tr.addEventListener("click", () => setView("roster"));
     const ts = $("#tabScoring"); if (ts) ts.addEventListener("click", () => setView("scoring"));
