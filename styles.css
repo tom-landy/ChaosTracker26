@@ -571,6 +571,8 @@ body[data-theme="highelves"] button.big.roll { background: linear-gradient(180de
 .bigcol.them .bigbtn { background: color-mix(in srgb, var(--bad) 16%, var(--card2)); border-color: color-mix(in srgb, var(--bad) 40%, var(--line2)); }
 .bigbtn.undo { background: transparent; font-weight: 700; color: var(--muted); padding: 10px; }
 .bigbtn:disabled { opacity: .4; cursor: default; }
-.objvals { margin-top: 4px; }
-.objvals summary { cursor: pointer; color: var(--muted); font-size: 12.5px; padding: 4px 0; }
-.objvalsrow { display: flex; gap: 12px; }
+.objvalsrow { display: flex; gap: 10px; margin-bottom: 10px; }
+.objval { flex: 1; display: flex; align-items: center; gap: 6px; background: var(--card2); border: 1px solid var(--line2); border-radius: 10px; padding: 6px 10px; }
+.objval > span:first-child { flex: 1; font-weight: 700; color: var(--ink); }
+.objval .scoreinput { width: 4.2em; text-align: center; font-weight: 800; font-size: 1.05rem; padding: 6px 8px; }
+.objhint { margin-top: 8px; }

@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v43"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v44"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -573,16 +573,18 @@
       ]);
     };
 
-    const valInput = (label, key) => el("label", { class: "scorefield" }, [el("span", { class: "muted small" }, label), el("input", { class: "scoreinput tiny", type: "number", inputmode: "numeric", value: g[key], onchange: (e) => { g[key] = e.target.value; save(); render(); } })]);
-    const settings = el("details", { class: "objvals" }, [
-      el("summary", {}, "⚙ Point values"),
-      el("div", { class: "objvalsrow" }, [valInput("Objective VP", "objVal"), valInput("Baggage VP", "bagVal")]),
+    // Always-visible, editable point values for this mission.
+    const valInput = (label, key) => el("label", { class: "objval" }, [
+      el("span", { class: "muted small" }, label),
+      el("input", { class: "scoreinput", type: "number", inputmode: "numeric", value: g[key], onchange: (e) => { g[key] = e.target.value; save(); render(); } }),
+      el("span", { class: "muted small" }, "VP"),
     ]);
 
     return el("div", { class: "objpanel" }, [
       el("div", { class: "objpanelhead" }, "🎯 Objectives & baggage"),
+      el("div", { class: "objvalsrow" }, [valInput("Each objective", "objVal"), valInput("Each baggage", "bagVal")]),
       el("div", { class: "bigcols" }, [col("me", "YOU", "you"), col("them", "THEM", "them")]),
-      settings,
+      el("p", { class: "muted small objhint" }, "Set the VP above to match your mission (e.g. an objective worth 30 each turn — tap it each turn). Tap ＋ under YOU or THEM to score."),
     ]);
   }
 
