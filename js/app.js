@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v44"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v45"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -348,7 +348,7 @@
   // VP-difference table, where the table already captures the whole result).
   function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
   function gameTotal(g, scale) { const base = gameTP(g, scale); if (base == null) return null; return base + (scale.table ? 0 : gameSec(g)); }
-  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objVal: "100", bagVal: "100", addsMine: [], addsThem: [] }; }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objVal: "100", bagVal: "250", addsMine: [], addsThem: [] }; }
 
   // VP line items for the tally helper (Warfare 2026 triggers). Fixed-value
   // ones prefill their points; %-of-points ones you enter (need the unit's pts).
@@ -546,7 +546,7 @@
   // THEM to add points; ↩ Undo takes the last one back. Folds into the game VP.
   function objectivePanel(g) {
     if (g.objVal == null) g.objVal = "100";
-    if (g.bagVal == null) g.bagVal = "100";
+    if (g.bagVal == null) g.bagVal = "250";
     g.addsMine = g.addsMine || []; g.addsThem = g.addsThem || [];
     const objVal = num(g.objVal) || 0, bagVal = num(g.bagVal) || 0;
 
