@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v48"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v49"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -348,7 +348,7 @@
   // VP-difference table, where the table already captures the whole result).
   function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
   function gameTotal(g, scale) { const base = gameTP(g, scale); if (base == null) return null; return base + (scale.table ? 0 : gameSec(g)); }
-  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objVal: "100", bagVal: "250", bagOn: true, secondaries: [], addsMine: [], addsThem: [] }; }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objVal: "100", secondaries: [], addsMine: [], addsThem: [] }; }
 
   // Setup dialog shown when adding (or editing) a game — pick the mission's VP
   // values and whether baggage trains are in use, then lock them in.
@@ -376,11 +376,6 @@
     for (const f of factionOpts) facSel.append(el("option", { value: f, selected: f === g.oppFaction ? "selected" : null }, f || "—"));
     const scenIn = el("input", { class: "scoreinput", placeholder: "e.g. King of the Hill", value: g.scenario || "" });
     const objIn = el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: g.objVal == null ? "100" : g.objVal });
-    const bagChk = el("input", { type: "checkbox", checked: (g.bagOn == null ? true : g.bagOn) ? "checked" : null });
-    const bagIn = el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: g.bagVal == null ? "250" : g.bagVal });
-    const bagValWrap = field("Baggage train VP (each)", bagIn);
-    const syncBag = () => { bagValWrap.style.display = bagChk.checked ? "" : "none"; };
-    bagChk.addEventListener("change", syncBag); syncBag();
 
     // Secondary objectives editor (each becomes its own scoring button in-game).
     const secs = (g.secondaries || []).map((s) => ({ id: s.id, name: s.name, vp: s.vp }));
@@ -413,8 +408,6 @@
       field("Scenario / mission", scenIn),
       el("div", { class: "setupsep" }, "Victory Points this game"),
       field("Objective VP (each claim)", objIn),
-      el("label", { class: "bagchk full" }, [bagChk, el("span", {}, "Baggage trains in use")]),
-      bagValWrap,
       el("div", { class: "setupsep" }, "Secondary objectives (optional)"),
       el("p", { class: "muted small" }, "Pick from the list (or Custom) — each becomes its own ＋ button in the game. Edit the VP to match your mission."),
       secList,
@@ -426,8 +419,6 @@
       g.oppFaction = facSel.value;
       g.scenario = scenIn.value.trim();
       g.objVal = objIn.value === "" ? "0" : objIn.value;
-      g.bagOn = bagChk.checked;
-      g.bagVal = bagIn.value === "" ? "0" : bagIn.value;
       g.secondaries = secs.filter((s) => (s.name || "").trim()).map((s) => ({ id: s.id, name: s.name.trim(), vp: s.vp === "" ? "0" : s.vp }));
       if (isNew) sc.games.push(g);
       save(); closeModal(); render();
@@ -629,10 +620,8 @@
   // from the game setup (edit via the ✎ button). Folds into the game VP.
   function objectivePanel(g, sc) {
     if (g.objVal == null) g.objVal = "100";
-    if (g.bagVal == null) g.bagVal = "250";
-    if (g.bagOn == null) g.bagOn = true;
     g.addsMine = g.addsMine || []; g.addsThem = g.addsThem || [];
-    const objVal = num(g.objVal) || 0, bagVal = num(g.bagVal) || 0;
+    const objVal = num(g.objVal) || 0;
 
     const add = (side, n) => {
       if (!n) return;
@@ -654,7 +643,6 @@
         el("div", { class: "bigtotal" }, String(num(side === "me" ? g.objMine : g.objThem) || 0)),
         el("button", { class: "bigbtn", onclick: () => add(side, objVal) }, ["＋ Objective", el("span", { class: "bigsub" }, "+" + objVal)]),
       ];
-      if (g.bagOn) btns.push(el("button", { class: "bigbtn", onclick: () => add(side, bagVal) }, ["＋ Baggage", el("span", { class: "bigsub" }, "+" + bagVal)]));
       for (const s of secondaries) { const sv = num(s.vp) || 0; btns.push(el("button", { class: "bigbtn sec", onclick: () => add(side, sv) }, ["＋ " + s.name, el("span", { class: "bigsub" }, "+" + sv)])); }
       btns.push(el("button", { class: "bigbtn undo", disabled: stack.length ? null : "disabled", onclick: () => undo(side) }, "↩ Undo"));
       return el("div", { class: "bigcol " + cls }, btns);
@@ -664,7 +652,6 @@
     const bits = [];
     if (g.scenario) bits.push(g.scenario);
     bits.push("Objective " + objVal + " VP");
-    if (g.bagOn) bits.push("Baggage " + bagVal + " VP");
     if (secondaries.length) bits.push(secondaries.length + " secondary" + (secondaries.length > 1 ? "s" : ""));
     const setupLine = el("div", { class: "objsetupline" }, [
       el("span", { class: "muted small" }, bits.join("  ·  ")),
