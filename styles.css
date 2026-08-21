@@ -591,3 +591,13 @@ body[data-theme="highelves"] button.big.roll { background: linear-gradient(180de
 .secrow { display: flex; gap: 6px; align-items: center; }
 .secrow .scoreinput.grow { flex: 1; }
 .bigbtn.sec { background: var(--card2); }
+
+/* ---- Scoring: secondaries as checkboxes on the game screen --------------- */
+.secchecks { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.secheadrow { display: grid; grid-template-columns: 3rem 1fr 3rem; align-items: center; text-align: center; letter-spacing: 0.08em; }
+.secheadrow .secheadname { text-align: left; padding-left: 8px; }
+.secrow2 { display: grid; grid-template-columns: 3rem 1fr 3rem; align-items: center; gap: 4px; background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px; cursor: pointer; }
+.secname { min-width: 0; }
+.secname b { display: block; line-height: 1.2; }
+.seccb { width: 26px; height: 26px; justify-self: center; accent-color: var(--good); cursor: pointer; }
+.secrow2 .seccb:last-of-type { accent-color: var(--bad); }

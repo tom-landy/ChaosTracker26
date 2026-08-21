@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v49"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v50"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -314,7 +314,15 @@
   // --- Objectives & baggage: a running VP tally per side (adds to game VP) ---
   // side is "me" | "them". Just the points you've claimed from objectives,
   // baggage trains, etc. — no turn/hold bookkeeping.
-  function objVP(g, side) { return num(side === "me" ? g.objMine : g.objThem) || 0; }
+  // Secondary objectives are one-off (checkbox) achievements per side.
+  function secVP(g, side) {
+    const done = g.secDone || {};
+    let t = 0;
+    for (const s of (g.secondaries || [])) { const st = done[s.id]; if (st && st[side]) t += num(s.vp) || 0; }
+    return t;
+  }
+  // Objective VP for a side = repeatable objective taps + checked secondaries.
+  function objVP(g, side) { return (num(side === "me" ? g.objMine : g.objThem) || 0) + secVP(g, side); }
   // Effective VP = victory points you enter (casualties) + objective/baggage VP.
   function effMy(g) { return (num(g.myVP) || 0) + objVP(g, "me"); }
   function effOpp(g) { return (num(g.oppVP) || 0) + objVP(g, "them"); }
@@ -348,7 +356,7 @@
   // VP-difference table, where the table already captures the whole result).
   function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
   function gameTotal(g, scale) { const base = gameTP(g, scale); if (base == null) return null; return base + (scale.table ? 0 : gameSec(g)); }
-  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objVal: "100", secondaries: [], addsMine: [], addsThem: [] }; }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objVal: "100", secondaries: [], secDone: {}, addsMine: [], addsThem: [] }; }
 
   // Setup dialog shown when adding (or editing) a game — pick the mission's VP
   // values and whether baggage trains are in use, then lock them in.
@@ -636,17 +644,32 @@
       save(); render();
     };
     const secondaries = g.secondaries || [];
+    g.secDone = g.secDone || {};
     const col = (side, label, cls) => {
       const stack = side === "me" ? g.addsMine : g.addsThem;
-      const btns = [
+      return el("div", { class: "bigcol " + cls }, [
         el("div", { class: "bigcolh" }, label),
-        el("div", { class: "bigtotal" }, String(num(side === "me" ? g.objMine : g.objThem) || 0)),
+        el("div", { class: "bigtotal" }, String(objVP(g, side))),
         el("button", { class: "bigbtn", onclick: () => add(side, objVal) }, ["＋ Objective", el("span", { class: "bigsub" }, "+" + objVal)]),
-      ];
-      for (const s of secondaries) { const sv = num(s.vp) || 0; btns.push(el("button", { class: "bigbtn sec", onclick: () => add(side, sv) }, ["＋ " + s.name, el("span", { class: "bigsub" }, "+" + sv)])); }
-      btns.push(el("button", { class: "bigbtn undo", disabled: stack.length ? null : "disabled", onclick: () => undo(side) }, "↩ Undo"));
-      return el("div", { class: "bigcol " + cls }, btns);
+        el("button", { class: "bigbtn undo", disabled: stack.length ? null : "disabled", onclick: () => undo(side) }, "↩ Undo"),
+      ]);
     };
+
+    // Secondaries as one-off checkboxes: tick under YOU or THEM to score them.
+    let secSection = null;
+    if (secondaries.length) {
+      const rows = [el("div", { class: "secheadrow" }, [el("span", { class: "muted small" }, "YOU"), el("span", { class: "secheadname muted small" }, "Secondary"), el("span", { class: "muted small" }, "THEM")])];
+      for (const s of secondaries) {
+        const st = (g.secDone[s.id] = g.secDone[s.id] || { me: false, them: false });
+        const cb = (side) => el("input", { type: "checkbox", class: "seccb", checked: st[side] ? "checked" : null, onchange: () => { st[side] = !st[side]; save(); render(); } });
+        rows.push(el("label", { class: "secrow2" }, [
+          cb("me"),
+          el("div", { class: "secname" }, [el("b", {}, s.name), el("span", { class: "muted small" }, (num(s.vp) || 0) + " VP")]),
+          cb("them"),
+        ]));
+      }
+      secSection = el("div", { class: "secchecks" }, rows);
+    }
 
     // Locked-in setup summary, with an edit affordance.
     const bits = [];
@@ -659,9 +682,10 @@
     ]);
 
     return el("div", { class: "objpanel" }, [
-      el("div", { class: "objpanelhead" }, "🎯 Objectives & baggage"),
+      el("div", { class: "objpanelhead" }, "🎯 Objectives & secondaries"),
       setupLine,
       el("div", { class: "bigcols" }, [col("me", "YOU", "you"), col("them", "THEM", "them")]),
+      secSection,
     ]);
   }
 
