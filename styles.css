@@ -580,3 +580,14 @@ body[data-theme="highelves"] button.big.roll { background: linear-gradient(180de
 .setuprow2 .scorefield { flex: 1; }
 .setupsep { font-weight: 800; color: var(--brass); border-top: 1px solid var(--line); padding-top: 10px; margin-top: 2px; }
 .bagchk.full { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink); }
+
+/* ---- Scoring: collapsed game details + secondaries ----------------------- */
+.gamedetails { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 6px; }
+.gamedetails > summary { cursor: pointer; color: var(--muted); font-size: 12.5px; font-weight: 700; padding: 6px 0; list-style: none; }
+.gamedetails > summary::-webkit-details-marker { display: none; }
+.gamedetails[open] > summary { color: var(--ink); }
+.gamedetails .gamegrid { margin-top: 8px; }
+.seclist { display: flex; flex-direction: column; gap: 6px; }
+.secrow { display: flex; gap: 6px; align-items: center; }
+.secrow .scoreinput.grow { flex: 1; }
+.bigbtn.sec { background: var(--card2); }
