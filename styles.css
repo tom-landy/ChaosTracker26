@@ -657,3 +657,41 @@ details.objpanel > summary::-webkit-details-marker { display: none; }
 .secbig.toggle.on .secbigsub { color: inherit; }
 .secundo { flex: 0 0 auto; width: 40px; font-size: 1.3rem; font-weight: 800; background: var(--card2); }
 .secundo:disabled { opacity: 0.3; }
+
+/* ==== Big, high-contrast "large touch" scoring UI ======================== */
+.scoring { font-size: 16px; }
+/* summary tiles */
+.scoresum { gap: 10px; }
+.scoretile { padding: 14px 8px; }
+.scoretile b { font-size: 1.9rem; }
+.scoretile span { font-size: 13px; }
+/* battle-turn stepper */
+.gameturn { gap: 16px; margin: 16px 0 10px; }
+.gameturn .turnbtn { padding: 16px 24px; font-size: 1.25rem; border-radius: 14px; min-height: 58px; }
+.gameturnlabel { font-size: 1.2rem; }
+.gameturnlabel b { font-size: 1.9rem; margin-left: 6px; }
+/* objectives panel header */
+.objpanelhead { font-size: 1.2rem; padding: 6px 0; }
+.objsummtot { font-size: 1.1rem; }
+/* generic objective big columns */
+.bigcols { gap: 12px; }
+.bigcolh { font-size: 1.15rem; letter-spacing: 0.08em; }
+.bigtotal { font-size: 2.6rem; }
+.bigbtn { min-height: 70px; font-size: 1.3rem; border-radius: 14px; border-width: 2px; }
+.bigbtn .bigsub { font-size: 15px; }
+/* secondary blocks */
+.secblock { padding: 14px; margin-top: 12px; border-width: 2px; }
+.secblockhead { margin-bottom: 12px; }
+.secblockname { font-size: 1.2rem; }
+.secblockbtns { gap: 12px; }
+.secbig { min-height: 78px; border-width: 2px; border-radius: 14px; }
+.secbig .secbiglabel { font-size: 1.4rem; letter-spacing: 0.06em; }
+.secbig .secbigsub { font-size: 15px; }
+.secundo { width: 58px; font-size: 2rem; border-width: 2px; }
+.secvpedit .scoreinput.tiny { width: 4.2em; font-size: 1.15rem; padding: 8px; }
+.secdel { padding: 8px 12px; font-size: 1.1rem; }
+/* add controls */
+.addsec, .addgame { min-height: 56px; font-size: 1.1rem; }
+.addgame { padding: 14px 22px; }
+/* copy results / edit chips */
+.objsetupline .chip, .scoreactions .ghost { padding: 8px 14px; font-size: 14px; }

@@ -3,6 +3,10 @@
 Versioning: from **1.0** onward, each release bumps the `x` in `1.x` by one.
 The same notes appear in the app under **What's new** (next to the version in the footer).
 
+## v1.2 — 2026-08-21
+- Scoring: bigger, higher-contrast "large touch" styling throughout — chunkier
+  buttons, larger numbers and text, and more spacing for easy tapping on a phone.
+
 ## v1.1 — 2026-08-21
 - Scoring: redesigned secondary objectives for mobile — each is now its own block
   with the name & VP as a header on top and big **YOU / THEM** buttons underneath

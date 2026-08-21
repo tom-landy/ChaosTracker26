@@ -10,10 +10,13 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "1.1"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
+  const APP_VERSION = "1.2"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
   const APP_DATE = "2026-08-21"; // release date shown in the footer for a quick freshness check
   // Newest first. Add an entry (and bump APP_VERSION's .x) with every release.
   const CHANGELOG = [
+    { v: "1.2", date: "2026-08-21", notes: [
+      "Scoring: bigger, higher-contrast “large touch” styling throughout — chunkier buttons, larger numbers and text, more spacing for easy tapping on a phone.",
+    ] },
     { v: "1.1", date: "2026-08-21", notes: [
       "Scoring: redesigned secondary objectives for mobile — each is now its own block with the name & VP as a header and big YOU / THEM buttons underneath (bigger, easier tap targets).",
     ] },
