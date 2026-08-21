@@ -10,10 +10,13 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "1.5"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
+  const APP_VERSION = "1.6"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
   const APP_DATE = "2026-08-21"; // release date shown in the footer for a quick freshness check
   // Newest first. Add an entry (and bump APP_VERSION's .x) with every release.
   const CHANGELOG = [
+    { v: "1.6", date: "2026-08-21", notes: [
+      "Scoring: per-turn objectives (Strategic Location, King of the Hill) are back to a simple running tally — tap YOU/THEM once for each marker you score, any turn (they're scored at both players' turn-ends), with a − undo. One widget handles all markers across the whole game.",
+    ] },
     { v: "1.5", date: "2026-08-21", notes: [
       "Scoring: added always-on common scorers to every game — Kill points (number field, with the ⚖ tally), Banners (± in 50s), and Enemy General slain (opt-in toggle for 100). These feed the total automatically.",
       "YOU / THEM buttons now share a fixed, equal width; per-turn objectives keep their undo on its own aligned row.",
@@ -351,12 +354,12 @@
   // baggage trains, etc. — no turn/hold bookkeeping.
   // Secondary objectives: "once" ones are a per-side tick; "perturn" ones are
   // tapped each turn they're held and accrue their VP per tap (a count per side).
-  // Per-turn side state is { bank, cur }: bank = turns already locked in,
-  // cur = held this turn (not yet banked). Normalises legacy plain-number counts.
-  function perSide(st, side) {
+  // Per-turn side state = a running count of times scored (tap to tally each
+  // time you hold it, any turn / any marker). Legacy {bank,cur} objects collapse.
+  function perCount(st, side) {
     let x = st[side];
-    if (typeof x === "number") x = { bank: x, cur: false };
-    else if (!x || typeof x !== "object") x = { bank: 0, cur: false };
+    if (x && typeof x === "object") x = (num(x.bank) || 0) + (x.cur ? 1 : 0);
+    if (typeof x !== "number" || isNaN(x)) x = 0;
     st[side] = x; return x;
   }
   function secVP(g, side) {
@@ -365,18 +368,10 @@
     for (const s of (g.secondaries || [])) {
       const st = done[s.id]; if (!st) continue;
       const v = num(s.vp) || 0;
-      if (s.mode === "perturn") { const ss = perSide(st, side); t += (ss.bank + (ss.cur ? 1 : 0)) * v; }
+      if (s.mode === "perturn") t += perCount(st, side) * v;
       else if (st[side]) t += v;
     }
     return t;
-  }
-  // Advancing the battle turn banks this turn's per-turn holds and clears them.
-  function bankTurn(g) {
-    for (const s of (g.secondaries || [])) {
-      if (s.mode !== "perturn") continue;
-      const st = g.secDone && g.secDone[s.id]; if (!st) continue;
-      for (const side of ["me", "them"]) { const ss = perSide(st, side); if (ss.cur) { ss.bank += 1; ss.cur = false; } }
-    }
   }
   // Objective VP for a side = repeatable objective taps + checked secondaries.
   function objVP(g, side) { return (num(side === "me" ? g.objMine : g.objThem) || 0) + secVP(g, side); }
@@ -700,7 +695,7 @@
     const turnRow = el("div", { class: "gameturn" }, [
       el("button", { class: "turnbtn", disabled: gt <= 1 ? "disabled" : null, title: "Previous turn", onclick: () => { g.gameTurn = Math.max(1, (g.gameTurn || 1) - 1); save(); render(); } }, "◀"),
       el("span", { class: "gameturnlabel" }, ["Battle turn ", el("b", {}, String(gt))]),
-      el("button", { class: "turnbtn primary", title: "Next turn — banks this turn's objectives", onclick: () => { bankTurn(g); g.gameTurn = (g.gameTurn || 1) + 1; save(); render(); } }, "Next ▶"),
+      el("button", { class: "turnbtn primary", title: "Next turn", onclick: () => { g.gameTurn = (g.gameTurn || 1) + 1; save(); render(); } }, "Next ▶"),
     ]);
 
     return el("div", { class: "gamecard " + rClass }, [head, turnRow, commonScorers(g), objectivePanel(g, sc), effRow, details]);
@@ -791,7 +786,7 @@
     if (secondaries.length) {
       for (const s of secondaries) {
         const per = s.mode === "perturn";
-        const st = (g.secDone[s.id] = g.secDone[s.id] || (per ? { me: { bank: 0, cur: false }, them: { bank: 0, cur: false } } : { me: false, them: false }));
+        const st = (g.secDone[s.id] = g.secDone[s.id] || (per ? { me: 0, them: 0 } : { me: false, them: false }));
         // Header: name + editable VP + delete.
         const head = el("div", { class: "secblockhead" }, [
           el("b", { class: "secblockname" }, s.name),
@@ -806,11 +801,10 @@
         const sideBtn = (side, label) => {
           const vp = num(s.vp) || 0;
           if (per) {
-            const ss = perSide(st, side);
-            const total = ss.bank + (ss.cur ? 1 : 0);
-            return el("button", { class: "secbig toggle " + side + (ss.cur ? " on" : ""), onclick: () => { ss.cur = !ss.cur; save(); render(); } }, [
+            const c = perCount(st, side);
+            return el("button", { class: "secbig " + side, onclick: () => { st[side] = perCount(st, side) + 1; save(); render(); } }, [
               el("span", { class: "secbiglabel" }, label),
-              el("span", { class: "secbigsub" }, total ? "×" + total + " · " + (total * vp) : "not held"),
+              el("span", { class: "secbigsub" }, c ? "×" + c + " · " + (c * vp) : "tap to add"),
             ]);
           }
           const on = !!st[side];
@@ -819,7 +813,7 @@
             el("span", { class: "secbigsub" }, on ? "✓ " + vp + " VP" : "not scored"),
           ]);
         };
-        const undoBtn = (side) => { const ss = perSide(st, side); const total = ss.bank + (ss.cur ? 1 : 0); return el("button", { class: "secundo full", disabled: total ? null : "disabled", onclick: () => { if (ss.cur) ss.cur = false; else ss.bank = Math.max(0, ss.bank - 1); save(); render(); } }, "− undo"); };
+        const undoBtn = (side) => { const c = perCount(st, side); return el("button", { class: "secundo full", disabled: c ? null : "disabled", onclick: () => { st[side] = Math.max(0, perCount(st, side) - 1); save(); render(); } }, "− undo"); };
         secRows.push(el("div", { class: "secblock" + (per ? " per" : "") }, [
           head,
           el("div", { class: "secblockbtns" }, [sideBtn("me", "YOU"), sideBtn("them", "THEM")]),

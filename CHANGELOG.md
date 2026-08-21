@@ -3,6 +3,12 @@
 Versioning: from **1.0** onward, each release bumps the `x` in `1.x` by one.
 The same notes appear in the app under **What's new** (next to the version in the footer).
 
+## v1.6 — 2026-08-21
+- Scoring: per-turn objectives (Strategic Location, King of the Hill) are back to a
+  simple running tally — tap **YOU/THEM** once for each marker you score, any turn
+  (they're scored at both players' turn-ends), with a **− undo**. One widget handles
+  every marker across the whole game (no re-adding widgets each turn).
+
 ## v1.5 — 2026-08-21
 - Scoring: added always-on **common scorers** to every game — **Kill points**
   (number field with the ⚖ tally), **Banners** (± in 50s) and **Enemy General
