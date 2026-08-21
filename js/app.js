@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v50"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v51"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -385,41 +385,13 @@
     const scenIn = el("input", { class: "scoreinput", placeholder: "e.g. King of the Hill", value: g.scenario || "" });
     const objIn = el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: g.objVal == null ? "100" : g.objVal });
 
-    // Secondary objectives editor (each becomes its own scoring button in-game).
-    const secs = (g.secondaries || []).map((s) => ({ id: s.id, name: s.name, vp: s.vp }));
-    const secList = el("div", { class: "seclist" });
-    function drawSecs() {
-      secList.innerHTML = "";
-      secs.forEach((s, i) => {
-        secList.append(el("div", { class: "secrow" }, [
-          el("input", { class: "scoreinput grow", placeholder: "Secondary name (e.g. Slay the Warlord)", value: s.name, onchange: (e) => { s.name = e.target.value; } }),
-          el("input", { class: "scoreinput tiny", type: "number", inputmode: "numeric", placeholder: "VP", value: s.vp, onchange: (e) => { s.vp = e.target.value; } }),
-          el("button", { class: "icon", title: "Remove", onclick: () => { secs.splice(i, 1); drawSecs(); } }, "✕"),
-        ]));
-      });
-    }
-    drawSecs();
-    const addSec = (name, vp) => { secs.push({ id: "s" + Date.now().toString(36) + secs.length, name: name || "", vp: vp == null ? "" : String(vp) }); drawSecs(); };
-    const addSecSel = el("select", { class: "scoreinput", onchange: (e) => {
-      const v = e.target.value; if (!v) return;
-      if (v === "__custom") addSec("", "");
-      else { const p = SECONDARY_PRESETS.find((x) => x.name === v); addSec(p ? p.name : v, p ? p.vp : ""); }
-      e.target.value = "";
-    } });
-    addSecSel.append(el("option", { value: "" }, "＋ Add a secondary…"));
-    for (const p of SECONDARY_PRESETS) addSecSel.append(el("option", { value: p.name }, p.name + " (" + p.vp + " VP)"));
-    addSecSel.append(el("option", { value: "__custom" }, "Custom…"));
-
     const body = el("div", { class: "setupform" }, [
       el("div", { class: "setuprow2" }, [field("Round", roundIn), field("Their army", facSel)]),
       field("Opponent", oppIn),
       field("Scenario / mission", scenIn),
       el("div", { class: "setupsep" }, "Victory Points this game"),
       field("Objective VP (each claim)", objIn),
-      el("div", { class: "setupsep" }, "Secondary objectives (optional)"),
-      el("p", { class: "muted small" }, "Pick from the list (or Custom) — each becomes its own ＋ button in the game. Edit the VP to match your mission."),
-      secList,
-      addSecSel,
+      el("p", { class: "muted small" }, "Add secondary objectives on the game screen once you start."),
     ]);
     const start = el("button", { class: "primary", onclick: () => {
       g.round = roundIn.value.trim() || g.round;
@@ -427,7 +399,6 @@
       g.oppFaction = facSel.value;
       g.scenario = scenIn.value.trim();
       g.objVal = objIn.value === "" ? "0" : objIn.value;
-      g.secondaries = secs.filter((s) => (s.name || "").trim()).map((s) => ({ id: s.id, name: s.name.trim(), vp: s.vp === "" ? "0" : s.vp }));
       if (isNew) sc.games.push(g);
       save(); closeModal(); render();
     } }, isNew ? "Start game ▶" : "Save");
@@ -656,20 +627,41 @@
     };
 
     // Secondaries as one-off checkboxes: tick under YOU or THEM to score them.
-    let secSection = null;
+    // Added/removed right here on the game screen.
+    const addSecondary = (name, vp) => {
+      g.secondaries = g.secondaries || [];
+      g.secondaries.push({ id: "s" + Date.now().toString(36) + g.secondaries.length, name: name, vp: vp == null || vp === "" ? "0" : String(vp) });
+      save(); render();
+    };
+    const secRows = [];
     if (secondaries.length) {
-      const rows = [el("div", { class: "secheadrow" }, [el("span", { class: "muted small" }, "YOU"), el("span", { class: "secheadname muted small" }, "Secondary"), el("span", { class: "muted small" }, "THEM")])];
+      secRows.push(el("div", { class: "secheadrow" }, [el("span", { class: "muted small" }, "YOU"), el("span", { class: "secheadname muted small" }, "Secondary"), el("span", { class: "muted small" }, "THEM"), el("span", {})]));
       for (const s of secondaries) {
         const st = (g.secDone[s.id] = g.secDone[s.id] || { me: false, them: false });
         const cb = (side) => el("input", { type: "checkbox", class: "seccb", checked: st[side] ? "checked" : null, onchange: () => { st[side] = !st[side]; save(); render(); } });
-        rows.push(el("label", { class: "secrow2" }, [
+        secRows.push(el("div", { class: "secrow2" }, [
           cb("me"),
           el("div", { class: "secname" }, [el("b", {}, s.name), el("span", { class: "muted small" }, (num(s.vp) || 0) + " VP")]),
           cb("them"),
+          el("button", { class: "icon secdel", title: "Remove secondary", onclick: () => { g.secondaries = g.secondaries.filter((x) => x !== s); if (g.secDone) delete g.secDone[s.id]; save(); render(); } }, "✕"),
         ]));
       }
-      secSection = el("div", { class: "secchecks" }, rows);
     }
+    // Add-secondary dropdown (presets + custom).
+    const addSel = el("select", { class: "scoreinput addsec", onchange: (e) => {
+      const v = e.target.value; e.target.value = "";
+      if (!v) return;
+      if (v === "__custom") {
+        const name = (prompt("Secondary name?") || "").trim(); if (!name) return;
+        const vp = prompt("VP for “" + name + "”?", "100");
+        addSecondary(name, vp == null ? "0" : vp);
+      } else { const p = SECONDARY_PRESETS.find((x) => x.name === v); addSecondary(p ? p.name : v, p ? p.vp : "0"); }
+    } });
+    addSel.append(el("option", { value: "" }, "＋ Add secondary…"));
+    for (const p of SECONDARY_PRESETS) addSel.append(el("option", { value: p.name }, p.name + " (" + p.vp + " VP)"));
+    addSel.append(el("option", { value: "__custom" }, "Custom…"));
+    secRows.push(addSel);
+    const secSection = el("div", { class: "secchecks" }, secRows);
 
     // Locked-in setup summary, with an edit affordance.
     const bits = [];
