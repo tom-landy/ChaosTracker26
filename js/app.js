@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v52"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v53"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -360,6 +360,28 @@
 
   // Setup dialog shown when adding (or editing) a game — pick the mission's VP
   // values and whether baggage trains are in use, then lock them in.
+  // Armies an opponent might field in Warhammer: The Old World.
+  const OPPONENT_ARMIES = [
+    "Warriors of Chaos",
+    "Beastmen Brayherds",
+    "Daemons of Chaos",
+    "Chaos Dwarfs",
+    "Orc & Goblin Tribes",
+    "Skaven",
+    "Tomb Kings of Khemri",
+    "Vampire Counts",
+    "The Empire",
+    "Kingdom of Bretonnia",
+    "Dwarfen Mountain Holds",
+    "High Elf Realms",
+    "Wood Elf Realms",
+    "Dark Elves",
+    "Lizardmen",
+    "Ogre Kingdoms",
+    "Renegade Crowns",
+    "Other",
+  ];
+
   // Named scenarios (from the Matched Play Guide / Warfare 2026 pack). Send me
   // the full guide's mission list and I'll complete this.
   const SCENARIO_PRESETS = [
@@ -384,7 +406,8 @@
   function openGameSetup(sc, game) {
     const isNew = !game;
     const g = game || newGame(sc);
-    const factionOpts = [""].concat(Object.keys(window.FACTIONS || {}).map((k) => window.FACTIONS[k].factionName)).concat(["Other"]);
+    const factionOpts = [""].concat(OPPONENT_ARMIES);
+    if (g.oppFaction && factionOpts.indexOf(g.oppFaction) === -1) factionOpts.push(g.oppFaction); // keep any custom value
     const field = (label, node) => el("label", { class: "scorefield full" }, [el("span", { class: "muted small" }, label), node]);
     const roundIn = el("input", { class: "scoreinput", value: g.round || "" });
     const oppIn = el("input", { class: "scoreinput", placeholder: "Name", value: g.opponent || "" });
