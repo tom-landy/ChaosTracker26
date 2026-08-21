@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v57"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v58"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -362,7 +362,7 @@
   // VP-difference table, where the table already captures the whole result).
   function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
   function gameTotal(g, scale) { const base = gameTP(g, scale); if (base == null) return null; return base + (scale.table ? 0 : gameSec(g)); }
-  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objOn: false, objVal: "100", secondaries: [], secDone: {}, addsMine: [], addsThem: [] }; }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objOn: false, objVal: "100", gameTurn: 1, secondaries: [], secDone: {}, addsMine: [], addsThem: [] }; }
 
   // Setup dialog shown when adding (or editing) a game — pick the mission's VP
   // values and whether baggage trains are in use, then lock them in.
@@ -642,7 +642,15 @@
     const om = objVP(g, "me"), ot = objVP(g, "them");
     const effRow = (om || ot) ? el("div", { class: "effvp small" }, "VP incl. objectives — You " + effMy(g) + " · Them " + effOpp(g) + "  (" + (om ? "+" + om : "0") + " / " + (ot ? "+" + ot : "0") + " objectives)") : null;
 
-    return el("div", { class: "gamecard " + rClass }, [head, objectivePanel(g, sc), effRow, details]);
+    // In-game battle-turn stepper (self-contained in Scoring — no roster needed).
+    const gt = g.gameTurn || 1;
+    const turnRow = el("div", { class: "gameturn" }, [
+      el("button", { class: "turnbtn", disabled: gt <= 1 ? "disabled" : null, title: "Previous turn", onclick: () => { g.gameTurn = Math.max(1, (g.gameTurn || 1) - 1); save(); render(); } }, "◀"),
+      el("span", { class: "gameturnlabel" }, ["Battle turn ", el("b", {}, String(gt))]),
+      el("button", { class: "turnbtn primary", title: "Next turn", onclick: () => { g.gameTurn = (g.gameTurn || 1) + 1; save(); render(); } }, "Next ▶"),
+    ]);
+
+    return el("div", { class: "gamecard " + rClass }, [head, turnRow, objectivePanel(g, sc), effRow, details]);
   }
 
   // Big-button objective/baggage scorer: tap ＋Objective / ＋Baggage under YOU or
