@@ -10,10 +10,13 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "1.3"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
+  const APP_VERSION = "1.4"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
   const APP_DATE = "2026-08-21"; // release date shown in the footer for a quick freshness check
   // Newest first. Add an entry (and bump APP_VERSION's .x) with every release.
   const CHANGELOG = [
+    { v: "1.4", date: "2026-08-21", notes: [
+      "Scoring: per-turn objectives now work turn-by-turn — tap YOU/THEM to mark who holds it this turn, and pressing “Next ▶” banks that turn's points and clears the selection for the new turn (past turns stay locked in). Fixed a stray “null” showing above the secondaries, and the “secondarys” typo.",
+    ] },
     { v: "1.3", date: "2026-08-21", notes: [
       "Scoring: fixed the summary totals (games / record / VP / tournament points) so the numbers are laid out in a tidy grid and no longer cramped after the larger UI.",
     ] },
@@ -343,16 +346,32 @@
   // baggage trains, etc. — no turn/hold bookkeeping.
   // Secondary objectives: "once" ones are a per-side tick; "perturn" ones are
   // tapped each turn they're held and accrue their VP per tap (a count per side).
+  // Per-turn side state is { bank, cur }: bank = turns already locked in,
+  // cur = held this turn (not yet banked). Normalises legacy plain-number counts.
+  function perSide(st, side) {
+    let x = st[side];
+    if (typeof x === "number") x = { bank: x, cur: false };
+    else if (!x || typeof x !== "object") x = { bank: 0, cur: false };
+    st[side] = x; return x;
+  }
   function secVP(g, side) {
     const done = g.secDone || {};
     let t = 0;
     for (const s of (g.secondaries || [])) {
       const st = done[s.id]; if (!st) continue;
       const v = num(s.vp) || 0;
-      if (s.mode === "perturn") t += (num(st[side]) || 0) * v;
+      if (s.mode === "perturn") { const ss = perSide(st, side); t += (ss.bank + (ss.cur ? 1 : 0)) * v; }
       else if (st[side]) t += v;
     }
     return t;
+  }
+  // Advancing the battle turn banks this turn's per-turn holds and clears them.
+  function bankTurn(g) {
+    for (const s of (g.secondaries || [])) {
+      if (s.mode !== "perturn") continue;
+      const st = g.secDone && g.secDone[s.id]; if (!st) continue;
+      for (const side of ["me", "them"]) { const ss = perSide(st, side); if (ss.cur) { ss.bank += 1; ss.cur = false; } }
+    }
   }
   // Objective VP for a side = repeatable objective taps + checked secondaries.
   function objVP(g, side) { return (num(side === "me" ? g.objMine : g.objThem) || 0) + secVP(g, side); }
@@ -674,7 +693,7 @@
     const turnRow = el("div", { class: "gameturn" }, [
       el("button", { class: "turnbtn", disabled: gt <= 1 ? "disabled" : null, title: "Previous turn", onclick: () => { g.gameTurn = Math.max(1, (g.gameTurn || 1) - 1); save(); render(); } }, "◀"),
       el("span", { class: "gameturnlabel" }, ["Battle turn ", el("b", {}, String(gt))]),
-      el("button", { class: "turnbtn primary", title: "Next turn", onclick: () => { g.gameTurn = (g.gameTurn || 1) + 1; save(); render(); } }, "Next ▶"),
+      el("button", { class: "turnbtn primary", title: "Next turn — banks this turn's objectives", onclick: () => { bankTurn(g); g.gameTurn = (g.gameTurn || 1) + 1; save(); render(); } }, "Next ▶"),
     ]);
 
     return el("div", { class: "gamecard " + rClass }, [head, turnRow, objectivePanel(g, sc), effRow, details]);
@@ -724,7 +743,7 @@
     if (secondaries.length) {
       for (const s of secondaries) {
         const per = s.mode === "perturn";
-        const st = (g.secDone[s.id] = g.secDone[s.id] || (per ? { me: 0, them: 0 } : { me: false, them: false }));
+        const st = (g.secDone[s.id] = g.secDone[s.id] || (per ? { me: { bank: 0, cur: false }, them: { bank: 0, cur: false } } : { me: false, them: false }));
         // Header: name + editable VP + delete.
         const head = el("div", { class: "secblockhead" }, [
           el("b", { class: "secblockname" }, s.name),
@@ -737,13 +756,15 @@
         // Big YOU / THEM buttons underneath (per-turn = tap to add; once = toggle).
         const sideBtn = (side, label) => {
           if (per) {
-            const n = num(st[side]) || 0;
+            const ss = perSide(st, side);
+            const total = ss.bank + (ss.cur ? 1 : 0);
+            const vp = num(s.vp) || 0;
             return el("div", { class: "secside" }, [
-              el("button", { class: "secbig " + side, onclick: () => { st[side] = (num(st[side]) || 0) + 1; save(); render(); } }, [
+              el("button", { class: "secbig toggle " + side + (ss.cur ? " on" : ""), onclick: () => { ss.cur = !ss.cur; save(); render(); } }, [
                 el("span", { class: "secbiglabel" }, label),
-                el("span", { class: "secbigsub" }, n ? "×" + n + " · " + (n * (num(s.vp) || 0)) : "tap to add"),
+                el("span", { class: "secbigsub" }, total ? "×" + total + " · " + (total * vp) : "not held"),
               ]),
-              el("button", { class: "secundo", disabled: n ? null : "disabled", title: "Undo", onclick: () => { st[side] = Math.max(0, (num(st[side]) || 0) - 1); save(); render(); } }, "−"),
+              el("button", { class: "secundo", disabled: total ? null : "disabled", title: "Undo", onclick: () => { if (ss.cur) ss.cur = false; else ss.bank = Math.max(0, ss.bank - 1); save(); render(); } }, "−"),
             ]);
           }
           const on = !!st[side];
@@ -779,7 +800,7 @@
     const bits = [];
     if (g.scenario) bits.push(g.scenario);
     if (showBig) bits.push("Objective " + objVal + " VP");
-    if (secondaries.length) bits.push(secondaries.length + " secondary" + (secondaries.length > 1 ? "s" : ""));
+    if (secondaries.length) bits.push(secondaries.length + (secondaries.length === 1 ? " secondary" : " secondaries"));
     const setupLine = el("div", { class: "objsetupline" }, [
       el("span", { class: "muted small" }, bits.join("  ·  ")),
       el("button", { class: "chip", onclick: () => openGameSetup(sc, g) }, "✎ Edit"),
@@ -796,10 +817,10 @@
         el("span", {}, "🎯 Objectives & secondaries"),
         (om || ot) ? el("span", { class: "objsummtot" }, "You " + om + " · Them " + ot) : el("span", { class: "muted small objsummtot" }, "tap to add"),
       ]),
-      setupLine,
-      showBig ? el("div", { class: "bigcols" }, [col("me", "YOU", "you"), col("them", "THEM", "them")]) : null,
-      secSection
+      setupLine
     );
+    if (showBig) det.append(el("div", { class: "bigcols" }, [col("me", "YOU", "you"), col("them", "THEM", "them")]));
+    det.append(secSection);
     return det;
   }
 

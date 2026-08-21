@@ -3,6 +3,12 @@
 Versioning: from **1.0** onward, each release bumps the `x` in `1.x` by one.
 The same notes appear in the app under **What's new** (next to the version in the footer).
 
+## v1.4 — 2026-08-21
+- Scoring: per-turn objectives now work turn-by-turn — tap **YOU/THEM** to mark who
+  holds it this turn; pressing **Next ▶** banks that turn's points and clears the
+  selection for the new turn, while past turns stay locked in.
+- Fixed a stray "null" that showed above the secondaries, and the "secondarys" typo.
+
 ## v1.3 — 2026-08-21
 - Scoring: fixed the summary totals (games / record / VP / tournament points) so
   the numbers sit in a tidy grid and are no longer cramped after the larger UI.
