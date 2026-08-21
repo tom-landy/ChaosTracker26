@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v54"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v55"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -314,11 +314,17 @@
   // --- Objectives & baggage: a running VP tally per side (adds to game VP) ---
   // side is "me" | "them". Just the points you've claimed from objectives,
   // baggage trains, etc. — no turn/hold bookkeeping.
-  // Secondary objectives are one-off (checkbox) achievements per side.
+  // Secondary objectives: "once" ones are a per-side tick; "perturn" ones are
+  // tapped each turn they're held and accrue their VP per tap (a count per side).
   function secVP(g, side) {
     const done = g.secDone || {};
     let t = 0;
-    for (const s of (g.secondaries || [])) { const st = done[s.id]; if (st && st[side]) t += num(s.vp) || 0; }
+    for (const s of (g.secondaries || [])) {
+      const st = done[s.id]; if (!st) continue;
+      const v = num(s.vp) || 0;
+      if (s.mode === "perturn") t += (num(st[side]) || 0) * v;
+      else if (st[side]) t += v;
+    }
     return t;
   }
   // Objective VP for a side = repeatable objective taps + checked secondaries.
@@ -393,13 +399,14 @@
   ];
 
   // Secondary objectives from the Matched Play Guide, with their VP values.
+  // mode "perturn" = tapped each turn held (accrues); "once" = a single tick.
   const SECONDARY_PRESETS = [
-    { name: "Strategic location (per turn held)", vp: 30 },
-    { name: "Domination — quarter held", vp: 100 },
-    { name: "Special feature (held at end)", vp: 200 },
-    { name: "Baggage train — held at end", vp: 100 },
-    { name: "Baggage train — destroyed enemy's", vp: 250 },
-    { name: "King of the Hill (per turn held)", vp: 100 },
+    { name: "Strategic location", vp: 30, mode: "perturn" },
+    { name: "King of the Hill", vp: 100, mode: "perturn" },
+    { name: "Domination — quarter held", vp: 100, mode: "once" },
+    { name: "Special feature (held at end)", vp: 200, mode: "once" },
+    { name: "Baggage train — held at end", vp: 100, mode: "once" },
+    { name: "Baggage train — destroyed enemy's", vp: 250, mode: "once" },
   ];
 
   function openGameSetup(sc, game) {
@@ -663,23 +670,33 @@
       ]);
     };
 
-    // Secondaries as one-off checkboxes: tick under YOU or THEM to score them.
+    // Secondaries: "once" = a per-side tick; "perturn" = tap ＋ each turn held.
     // Added/removed right here on the game screen.
-    const addSecondary = (name, vp) => {
+    const addSecondary = (name, vp, mode) => {
       g.secondaries = g.secondaries || [];
-      g.secondaries.push({ id: "s" + Date.now().toString(36) + g.secondaries.length, name: name, vp: vp == null || vp === "" ? "0" : String(vp) });
+      g.secondaries.push({ id: "s" + Date.now().toString(36) + g.secondaries.length, name: name, vp: vp == null || vp === "" ? "0" : String(vp), mode: mode === "perturn" ? "perturn" : "once" });
       save(); render();
     };
     const secRows = [];
     if (secondaries.length) {
       secRows.push(el("div", { class: "secheadrow" }, [el("span", { class: "muted small" }, "YOU"), el("span", { class: "secheadname muted small" }, "Secondary"), el("span", { class: "muted small" }, "THEM"), el("span", {})]));
       for (const s of secondaries) {
-        const st = (g.secDone[s.id] = g.secDone[s.id] || { me: false, them: false });
-        const cb = (side) => el("input", { type: "checkbox", class: "seccb", checked: st[side] ? "checked" : null, onchange: () => { st[side] = !st[side]; save(); render(); } });
-        secRows.push(el("div", { class: "secrow2" }, [
-          cb("me"),
-          el("div", { class: "secname" }, [el("b", {}, s.name), el("span", { class: "muted small" }, (num(s.vp) || 0) + " VP")]),
-          cb("them"),
+        const per = s.mode === "perturn";
+        const st = (g.secDone[s.id] = g.secDone[s.id] || (per ? { me: 0, them: 0 } : { me: false, them: false }));
+        const control = (side) => {
+          if (!per) return el("input", { type: "checkbox", class: "seccb", checked: st[side] ? "checked" : null, onchange: () => { st[side] = !st[side]; save(); render(); } });
+          const n = num(st[side]) || 0;
+          return el("div", { class: "secstep" }, [
+            el("button", { class: "secminus", disabled: n ? null : "disabled", onclick: () => { st[side] = Math.max(0, (num(st[side]) || 0) - 1); save(); render(); } }, "−"),
+            el("b", { class: "seccount" }, "×" + n),
+            el("button", { class: "secplus", onclick: () => { st[side] = (num(st[side]) || 0) + 1; save(); render(); } }, "＋"),
+          ]);
+        };
+        const sub = (num(s.vp) || 0) + (per ? " VP/turn" : " VP");
+        secRows.push(el("div", { class: "secrow2" + (per ? " per" : "") }, [
+          control("me"),
+          el("div", { class: "secname" }, [el("b", {}, s.name), el("span", { class: "muted small" }, sub)]),
+          control("them"),
           el("button", { class: "icon secdel", title: "Remove secondary", onclick: () => { g.secondaries = g.secondaries.filter((x) => x !== s); if (g.secDone) delete g.secDone[s.id]; save(); render(); } }, "✕"),
         ]));
       }
@@ -691,11 +708,12 @@
       if (v === "__custom") {
         const name = (prompt("Secondary name?") || "").trim(); if (!name) return;
         const vp = prompt("VP for “" + name + "”?", "100");
-        addSecondary(name, vp == null ? "0" : vp);
-      } else { const p = SECONDARY_PRESETS.find((x) => x.name === v); addSecondary(p ? p.name : v, p ? p.vp : "0"); }
+        const per = confirm("Scored EACH TURN it's held? (OK = per turn, Cancel = one-off)");
+        addSecondary(name, vp == null ? "0" : vp, per ? "perturn" : "once");
+      } else { const p = SECONDARY_PRESETS.find((x) => x.name === v); addSecondary(p ? p.name : v, p ? p.vp : "0", p ? p.mode : "once"); }
     } });
     addSel.append(el("option", { value: "" }, "＋ Add secondary…"));
-    for (const p of SECONDARY_PRESETS) addSel.append(el("option", { value: p.name }, p.name + " (" + p.vp + " VP)"));
+    for (const p of SECONDARY_PRESETS) addSel.append(el("option", { value: p.name }, p.name + " (" + p.vp + " VP" + (p.mode === "perturn" ? "/turn" : "") + ")"));
     addSel.append(el("option", { value: "__custom" }, "Custom…"));
     secRows.push(addSel);
     const secSection = el("div", { class: "secchecks" }, secRows);
