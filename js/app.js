@@ -10,10 +10,13 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "1.0"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
+  const APP_VERSION = "1.1"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
   const APP_DATE = "2026-08-21"; // release date shown in the footer for a quick freshness check
   // Newest first. Add an entry (and bump APP_VERSION's .x) with every release.
   const CHANGELOG = [
+    { v: "1.1", date: "2026-08-21", notes: [
+      "Scoring: redesigned secondary objectives for mobile — each is now its own block with the name & VP as a header and big YOU / THEM buttons underneath (bigger, easier tap targets).",
+    ] },
     { v: "1.0", date: "2026-08-21", notes: [
       "First versioned release (consolidates all development so far).",
       "Live table tracker for Warhammer: The Old World — install it, works offline.",
@@ -713,28 +716,39 @@
     };
     const secRows = [];
     if (secondaries.length) {
-      secRows.push(el("div", { class: "secheadrow" }, [el("span", { class: "muted small" }, "YOU"), el("span", { class: "secheadname muted small" }, "Secondary"), el("span", { class: "muted small" }, "THEM"), el("span", {})]));
       for (const s of secondaries) {
         const per = s.mode === "perturn";
         const st = (g.secDone[s.id] = g.secDone[s.id] || (per ? { me: 0, them: 0 } : { me: false, them: false }));
-        const control = (side) => {
-          if (!per) return el("input", { type: "checkbox", class: "seccb", checked: st[side] ? "checked" : null, onchange: () => { st[side] = !st[side]; save(); render(); } });
-          const n = num(st[side]) || 0;
-          return el("div", { class: "secstep" }, [
-            el("button", { class: "secminus", disabled: n ? null : "disabled", onclick: () => { st[side] = Math.max(0, (num(st[side]) || 0) - 1); save(); render(); } }, "−"),
-            el("b", { class: "seccount" }, "×" + n),
-            el("button", { class: "secplus", onclick: () => { st[side] = (num(st[side]) || 0) + 1; save(); render(); } }, "＋"),
+        // Header: name + editable VP + delete.
+        const head = el("div", { class: "secblockhead" }, [
+          el("b", { class: "secblockname" }, s.name),
+          el("div", { class: "secvpedit" }, [
+            el("input", { class: "scoreinput tiny", type: "number", inputmode: "numeric", value: s.vp, onchange: (e) => { s.vp = e.target.value; save(); render(); } }),
+            el("span", { class: "muted small" }, per ? "VP/turn" : "VP"),
+          ]),
+          el("button", { class: "icon secdel", title: "Remove secondary", onclick: () => { g.secondaries = g.secondaries.filter((x) => x !== s); if (g.secDone) delete g.secDone[s.id]; save(); render(); } }, "✕"),
+        ]);
+        // Big YOU / THEM buttons underneath (per-turn = tap to add; once = toggle).
+        const sideBtn = (side, label) => {
+          if (per) {
+            const n = num(st[side]) || 0;
+            return el("div", { class: "secside" }, [
+              el("button", { class: "secbig " + side, onclick: () => { st[side] = (num(st[side]) || 0) + 1; save(); render(); } }, [
+                el("span", { class: "secbiglabel" }, label),
+                el("span", { class: "secbigsub" }, n ? "×" + n + " · " + (n * (num(s.vp) || 0)) : "tap to add"),
+              ]),
+              el("button", { class: "secundo", disabled: n ? null : "disabled", title: "Undo", onclick: () => { st[side] = Math.max(0, (num(st[side]) || 0) - 1); save(); render(); } }, "−"),
+            ]);
+          }
+          const on = !!st[side];
+          return el("button", { class: "secbig toggle " + side + (on ? " on" : ""), onclick: () => { st[side] = !st[side]; save(); render(); } }, [
+            el("span", { class: "secbiglabel" }, label),
+            el("span", { class: "secbigsub" }, on ? "✓ " + (num(s.vp) || 0) + " VP" : "not scored"),
           ]);
         };
-        const vpEdit = el("div", { class: "secvpedit" }, [
-          el("input", { class: "scoreinput tiny", type: "number", inputmode: "numeric", value: s.vp, onchange: (e) => { s.vp = e.target.value; save(); render(); } }),
-          el("span", { class: "muted small" }, per ? "VP/turn" : "VP"),
-        ]);
-        secRows.push(el("div", { class: "secrow2" + (per ? " per" : "") }, [
-          control("me"),
-          el("div", { class: "secname" }, [el("b", {}, s.name), vpEdit]),
-          control("them"),
-          el("button", { class: "icon secdel", title: "Remove secondary", onclick: () => { g.secondaries = g.secondaries.filter((x) => x !== s); if (g.secDone) delete g.secDone[s.id]; save(); render(); } }, "✕"),
+        secRows.push(el("div", { class: "secblock" + (per ? " per" : "") }, [
+          head,
+          el("div", { class: "secblockbtns" }, [sideBtn("me", "YOU"), sideBtn("them", "THEM")]),
         ]));
       }
     }

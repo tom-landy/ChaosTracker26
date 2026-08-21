@@ -3,6 +3,12 @@
 Versioning: from **1.0** onward, each release bumps the `x` in `1.x` by one.
 The same notes appear in the app under **What's new** (next to the version in the footer).
 
+## v1.1 — 2026-08-21
+- Scoring: redesigned secondary objectives for mobile — each is now its own block
+  with the name & VP as a header on top and big **YOU / THEM** buttons underneath
+  (bigger, easier tap targets). Per-turn objectives tap to add (with an undo);
+  one-off objectives toggle on/off.
+
 ## v1.0 — 2026-08-21
 First versioned release. Consolidates all development so far.
 

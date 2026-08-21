@@ -637,3 +637,23 @@ details.objpanel > summary::-webkit-details-marker { display: none; }
 .changelog .clhead b { color: var(--brass); font-size: 1.1rem; }
 .changelog ul { margin: 6px 0 0; padding-left: 18px; }
 .changelog li { margin: 4px 0; }
+
+/* ---- Scoring: secondary blocks with big YOU/THEM buttons ----------------- */
+.secblock { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-top: 8px; }
+.secblockhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.secblockname { flex: 1; min-width: 0; }
+.secblockbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.secside { display: flex; gap: 6px; }
+.secbig {
+  flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-weight: 800; border-radius: 12px; border: 1px solid var(--line2); background: var(--card);
+}
+.secbig.me { border-color: #2f6a44; }
+.secbig.them { border-color: #6a3330; }
+.secbig .secbiglabel { font-size: 1rem; letter-spacing: 0.04em; }
+.secbig .secbigsub { font-size: 12px; font-weight: 600; color: var(--muted); }
+.secbig.toggle.on.me { background: var(--good); color: #06210f; border-color: var(--good); }
+.secbig.toggle.on.them { background: var(--bad); color: #2a0a08; border-color: var(--bad); }
+.secbig.toggle.on .secbigsub { color: inherit; }
+.secundo { flex: 0 0 auto; width: 40px; font-size: 1.3rem; font-weight: 800; background: var(--card2); }
+.secundo:disabled { opacity: 0.3; }
