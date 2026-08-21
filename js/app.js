@@ -10,10 +10,15 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "1.4"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
+  const APP_VERSION = "1.5"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
   const APP_DATE = "2026-08-21"; // release date shown in the footer for a quick freshness check
   // Newest first. Add an entry (and bump APP_VERSION's .x) with every release.
   const CHANGELOG = [
+    { v: "1.5", date: "2026-08-21", notes: [
+      "Scoring: added always-on common scorers to every game — Kill points (number field, with the ⚖ tally), Banners (± in 50s), and Enemy General slain (opt-in toggle for 100). These feed the total automatically.",
+      "YOU / THEM buttons now share a fixed, equal width; per-turn objectives keep their undo on its own aligned row.",
+      "Kill points moved out of the collapsed panel (now always on); that panel is just Result & notes.",
+    ] },
     { v: "1.4", date: "2026-08-21", notes: [
       "Scoring: per-turn objectives now work turn-by-turn — tap YOU/THEM to mark who holds it this turn, and pressing “Next ▶” banks that turn's points and clears the selection for the new turn (past turns stay locked in). Fixed a stray “null” showing above the secondaries, and the “secondarys” typo.",
     ] },
@@ -375,10 +380,18 @@
   }
   // Objective VP for a side = repeatable objective taps + checked secondaries.
   function objVP(g, side) { return (num(side === "me" ? g.objMine : g.objThem) || 0) + secVP(g, side); }
-  // Effective VP = victory points you enter (casualties) + objective/baggage VP.
-  function effMy(g) { return (num(g.myVP) || 0) + objVP(g, "me"); }
-  function effOpp(g) { return (num(g.oppVP) || 0) + objVP(g, "them"); }
-  function gameHasScore(g) { return num(g.myVP) !== "" || num(g.oppVP) !== "" || objVP(g, "me") > 0 || objVP(g, "them") > 0; }
+  // Always-on common scorers: banners (50 each) + enemy General slain (100).
+  function commonVP(g, side) {
+    const ban = side === "me" ? g.banMe : g.banThem;
+    const gen = side === "me" ? g.genMe : g.genThem;
+    return (num(ban) || 0) * 50 + (gen ? 100 : 0);
+  }
+  // Effective VP = kill points + banners + general + objectives/secondaries.
+  function effMy(g) { return (num(g.myVP) || 0) + commonVP(g, "me") + objVP(g, "me"); }
+  function effOpp(g) { return (num(g.oppVP) || 0) + commonVP(g, "them") + objVP(g, "them"); }
+  function gameHasScore(g) {
+    return num(g.myVP) !== "" || num(g.oppVP) !== "" || commonVP(g, "me") > 0 || commonVP(g, "them") > 0 || objVP(g, "me") > 0 || objVP(g, "them") > 0;
+  }
 
   // Warfare 2026: tournament points from the VP difference (winner–loser),
   // using effective VP so captured objectives count. 0–150 = 10–10 (draw),
@@ -408,7 +421,7 @@
   // VP-difference table, where the table already captures the whole result).
   function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
   function gameTotal(g, scale) { const base = gameTP(g, scale); if (base == null) return null; return base + (scale.table ? 0 : gameSec(g)); }
-  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objOn: false, objVal: "100", gameTurn: 1, secondaries: [], secDone: {}, addsMine: [], addsThem: [] }; }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objOn: false, objVal: "100", gameTurn: 1, banMe: 0, banThem: 0, genMe: false, genThem: false, secondaries: [], secDone: {}, addsMine: [], addsThem: [] }; }
 
   // Setup dialog shown when adding (or editing) a game — pick the mission's VP
   // values and whether baggage trains are in use, then lock them in.
@@ -510,9 +523,6 @@
     { label: "Unit/character destroyed (full pts)", pts: "" },
     { label: "Fleeing at game end (½ pts)", pts: "" },
     { label: "Reduced to ≤25% (½ pts)", pts: "" },
-    { label: "General slain", pts: 100 },
-    { label: "BSB slain / fled", pts: 50 },
-    { label: "Standard captured", pts: 50 },
   ];
   // Guided VP builder: rows of {label, pts} that sum into the My/Their VP field.
   function vpTallyModal(g, which, onDone) {
@@ -670,11 +680,9 @@
       el("button", { class: "icon del", title: "Delete game", onclick: () => { if (confirm("Delete this game?")) { sc.games = sc.games.filter((x) => x !== g); save(); render(); } } }, "✕"),
     ]);
 
-    // Casualty VP + result + notes — tucked into a collapsed panel so the
-    // in-game card stays lean (opponent/scenario/VP values live in ✎ setup).
+    // Result + notes — tucked into a collapsed panel (kill points now live in
+    // the always-on Common scoring section above).
     const grid = el("div", { class: "gamegrid" }, [
-      vpField("Your casualty VP", "myVP", "mine"),
-      vpField("Their casualty VP", "oppVP", "opp"),
       fld("Result", resSel),
       scale.manual ? fld("Battle pts", inp("tp", { type: "number", inputmode: "numeric", placeholder: "0" })) : null,
       (scale.none || scale.table) ? null : fld("Secondary pts", inp("secpts", { type: "number", inputmode: "numeric", placeholder: "0" })),
@@ -682,11 +690,10 @@
     const notes = fld("Notes", inp("notes", { placeholder: "How it went…" }));
     notes.classList.add("full");
     grid.append(notes);
-    const details = el("details", { class: "gamedetails" }, [el("summary", {}, "＋ Casualty VP, result & notes"), grid]);
+    const details = el("details", { class: "gamedetails" }, [el("summary", {}, "＋ Result & notes"), grid]);
 
-    // Effective VP readout when objectives/baggage are contributing.
-    const om = objVP(g, "me"), ot = objVP(g, "them");
-    const effRow = (om || ot) ? el("div", { class: "effvp small" }, "VP incl. objectives — You " + effMy(g) + " · Them " + effOpp(g) + "  (" + (om ? "+" + om : "0") + " / " + (ot ? "+" + ot : "0") + " objectives)") : null;
+    // Grand total VP for the game (kill points + banners + general + objectives).
+    const effRow = el("div", { class: "effvp" }, "Total VP — You " + effMy(g) + " · Them " + effOpp(g));
 
     // In-game battle-turn stepper (self-contained in Scoring — no roster needed).
     const gt = g.gameTurn || 1;
@@ -696,7 +703,48 @@
       el("button", { class: "turnbtn primary", title: "Next turn — banks this turn's objectives", onclick: () => { bankTurn(g); g.gameTurn = (g.gameTurn || 1) + 1; save(); render(); } }, "Next ▶"),
     ]);
 
-    return el("div", { class: "gamecard " + rClass }, [head, turnRow, objectivePanel(g, sc), effRow, details]);
+    return el("div", { class: "gamecard " + rClass }, [head, turnRow, commonScorers(g), objectivePanel(g, sc), effRow, details]);
+  }
+
+  // Always-on common scorers every game uses: kill points, banners, general.
+  function commonScorers(g) {
+    // Kill points — a numeric field per side, with the ⚖ tally helper.
+    const killCell = (side, key) => el("div", { class: "cscell " + side }, [
+      el("span", { class: "cslabel2" }, side === "me" ? "YOU" : "THEM"),
+      el("div", { class: "vprow" }, [
+        el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: g[key] == null ? "" : g[key], onchange: (e) => { g[key] = e.target.value; save(); render(); } }),
+        el("button", { class: "vptally", title: "Tally kill points", onclick: () => vpTallyModal(g, side === "me" ? "mine" : "opp", render) }, "⚖"),
+      ]),
+    ]);
+    // Banners — ± in 50-point increments (stored as a count of banners).
+    const banCell = (side, key) => {
+      const n = num(g[key]) || 0;
+      return el("div", { class: "cscell " + side }, [
+        el("span", { class: "cslabel2" }, side === "me" ? "YOU" : "THEM"),
+        el("div", { class: "banstep" }, [
+          el("button", { class: "secundo", disabled: n ? null : "disabled", onclick: () => { g[key] = Math.max(0, n - 1); save(); render(); } }, "−"),
+          el("b", {}, "×" + n + " · " + (n * 50)),
+          el("button", { class: "banplus", onclick: () => { g[key] = n + 1; save(); render(); } }, "＋"),
+        ]),
+      ]);
+    };
+    // Enemy General slain — opt-in toggle for 100 VP per side.
+    const genBtn = (side, key) => {
+      const on = !!g[key];
+      return el("button", { class: "secbig toggle " + side + (on ? " on" : ""), onclick: () => { g[key] = !g[key]; save(); render(); } }, [
+        el("span", { class: "secbiglabel" }, side === "me" ? "YOU" : "THEM"),
+        el("span", { class: "secbigsub" }, on ? "✓ 100 VP" : "not slain"),
+      ]);
+    };
+    const rowOf = (title, sub, meNode, themNode) => el("div", { class: "csrow" }, [
+      el("div", { class: "cshead" }, [el("b", {}, title), el("span", { class: "muted small" }, sub)]),
+      el("div", { class: "csctrls" }, [meNode, themNode]),
+    ]);
+    return el("div", { class: "commonscore" }, [
+      rowOf("Kill points", "units destroyed / fled / ≤25%", killCell("me", "myVP"), killCell("them", "oppVP")),
+      rowOf("Banners", "50 each", banCell("me", "banMe"), banCell("them", "banThem")),
+      rowOf("Enemy General slain", "100 VP", genBtn("me", "genMe"), genBtn("them", "genThem")),
+    ]);
   }
 
   // Big-button objective/baggage scorer: tap ＋Objective / ＋Baggage under YOU or
@@ -753,29 +801,29 @@
           ]),
           el("button", { class: "icon secdel", title: "Remove secondary", onclick: () => { g.secondaries = g.secondaries.filter((x) => x !== s); if (g.secDone) delete g.secDone[s.id]; save(); render(); } }, "✕"),
         ]);
-        // Big YOU / THEM buttons underneath (per-turn = tap to add; once = toggle).
+        // Big, equal-width YOU / THEM buttons (per-turn = held-this-turn toggle;
+        // once = scored toggle). Per-turn undo lives in its own aligned row.
         const sideBtn = (side, label) => {
+          const vp = num(s.vp) || 0;
           if (per) {
             const ss = perSide(st, side);
             const total = ss.bank + (ss.cur ? 1 : 0);
-            const vp = num(s.vp) || 0;
-            return el("div", { class: "secside" }, [
-              el("button", { class: "secbig toggle " + side + (ss.cur ? " on" : ""), onclick: () => { ss.cur = !ss.cur; save(); render(); } }, [
-                el("span", { class: "secbiglabel" }, label),
-                el("span", { class: "secbigsub" }, total ? "×" + total + " · " + (total * vp) : "not held"),
-              ]),
-              el("button", { class: "secundo", disabled: total ? null : "disabled", title: "Undo", onclick: () => { if (ss.cur) ss.cur = false; else ss.bank = Math.max(0, ss.bank - 1); save(); render(); } }, "−"),
+            return el("button", { class: "secbig toggle " + side + (ss.cur ? " on" : ""), onclick: () => { ss.cur = !ss.cur; save(); render(); } }, [
+              el("span", { class: "secbiglabel" }, label),
+              el("span", { class: "secbigsub" }, total ? "×" + total + " · " + (total * vp) : "not held"),
             ]);
           }
           const on = !!st[side];
           return el("button", { class: "secbig toggle " + side + (on ? " on" : ""), onclick: () => { st[side] = !st[side]; save(); render(); } }, [
             el("span", { class: "secbiglabel" }, label),
-            el("span", { class: "secbigsub" }, on ? "✓ " + (num(s.vp) || 0) + " VP" : "not scored"),
+            el("span", { class: "secbigsub" }, on ? "✓ " + vp + " VP" : "not scored"),
           ]);
         };
+        const undoBtn = (side) => { const ss = perSide(st, side); const total = ss.bank + (ss.cur ? 1 : 0); return el("button", { class: "secundo full", disabled: total ? null : "disabled", onclick: () => { if (ss.cur) ss.cur = false; else ss.bank = Math.max(0, ss.bank - 1); save(); render(); } }, "− undo"); };
         secRows.push(el("div", { class: "secblock" + (per ? " per" : "") }, [
           head,
           el("div", { class: "secblockbtns" }, [sideBtn("me", "YOU"), sideBtn("them", "THEM")]),
+          per ? el("div", { class: "secundorow" }, [undoBtn("me"), undoBtn("them")]) : null,
         ]));
       }
     }

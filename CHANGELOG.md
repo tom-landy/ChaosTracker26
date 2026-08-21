@@ -3,6 +3,15 @@
 Versioning: from **1.0** onward, each release bumps the `x` in `1.x` by one.
 The same notes appear in the app under **What's new** (next to the version in the footer).
 
+## v1.5 — 2026-08-21
+- Scoring: added always-on **common scorers** to every game — **Kill points**
+  (number field with the ⚖ tally), **Banners** (± in 50s) and **Enemy General
+  slain** (opt-in toggle for 100). All feed the total automatically.
+- **YOU / THEM** buttons now share a fixed, equal width; per-turn objectives keep
+  their undo on its own aligned row.
+- Kill points moved out of the collapsed panel (now always on); that panel is
+  just Result & notes.
+
 ## v1.4 — 2026-08-21
 - Scoring: per-turn objectives now work turn-by-turn — tap **YOU/THEM** to mark who
   holds it this turn; pressing **Next ▶** banks that turn's points and clears the

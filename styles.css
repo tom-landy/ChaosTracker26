@@ -702,3 +702,23 @@ details.objpanel > summary::-webkit-details-marker { display: none; }
 .scoretile b { font-size: 1.55rem; line-height: 1.1; white-space: nowrap; }
 .scoretile span { font-size: 12.5px; line-height: 1.1; }
 @media (min-width: 560px) { .scoresum { grid-template-columns: repeat(6, 1fr); } }
+
+/* ==== v1.5 — always-on common scorers + equal-width YOU/THEM ============== */
+/* equal-width secondary buttons; per-turn undo on its own aligned row */
+.secblockbtns { grid-template-columns: 1fr 1fr; }
+.secundorow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.secundorow .secundo.full { width: auto; min-height: 44px; font-size: 1rem; font-weight: 700; }
+/* common scorers (kill points / banners / general) */
+.commonscore { display: flex; flex-direction: column; gap: 12px; margin: 6px 0 4px; }
+.cshead { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.cshead b { font-size: 1.15rem; }
+.csctrls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; }
+.cscell { display: flex; flex-direction: column; gap: 4px; }
+.cslabel2 { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-align: center; color: var(--muted); }
+.cscell.me .cslabel2 { color: var(--good); }
+.cscell.them .cslabel2 { color: var(--bad); }
+.cscell .vprow .scoreinput { font-size: 1.3rem; text-align: center; min-height: 52px; }
+.banstep { display: flex; align-items: center; justify-content: space-between; gap: 6px; background: var(--card); border: 1px solid var(--line2); border-radius: 12px; padding: 6px 8px; min-height: 56px; }
+.banstep b { font-size: 1.05rem; }
+.banstep .secundo, .banplus { width: 48px; min-height: 44px; font-size: 1.5rem; font-weight: 800; }
+.banplus { color: var(--good); }
