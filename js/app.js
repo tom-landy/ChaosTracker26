@@ -10,8 +10,26 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v58"; // shown in the footer; matches the service-worker cache
-  const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
+  const APP_VERSION = "1.0"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
+  const APP_DATE = "2026-08-21"; // release date shown in the footer for a quick freshness check
+  // Newest first. Add an entry (and bump APP_VERSION's .x) with every release.
+  const CHANGELOG = [
+    { v: "1.0", date: "2026-08-21", notes: [
+      "First versioned release (consolidates all development so far).",
+      "Live table tracker for Warhammer: The Old World — install it, works offline.",
+      "Three factions, auto-detected from your Old World Builder import and self-themed: Warriors of Chaos, The Empire, High Elf Realms — full rosters, mounts, lores and magic items.",
+      "Import army lists from Old World Builder (.owb.json); per-unit tracking of wounds, casualties, mounts, special-rule tags and saves/ward.",
+      "Eye of the Gods (Gaze of the Gods) rewards for Chaos, plus the “Call Daddy” roller.",
+      "Spell & effect tracking with per-lore spell menus; the turn button clears temporary effects and shows start-of-turn reminders.",
+      "Status tracking (fleeing / fled / dead) and a VP-loss summary.",
+      "Multiple armies, backup & restore to file.",
+      "Scoring tab: tournament sheet with the Warfare 2026 VP-difference → 20-point system (and W/D/L scales), per-game cards, live record/VP summary and copy-to-clipboard results.",
+      "Matched Play Guide missions dropdown and secondary objectives with correct VP — per-turn objectives use a tap-each-turn stepper, one-off objectives use a tick.",
+      "Objectives are opt-in per game; secondary VP is editable; in-game battle-turn stepper so Scoring works on its own.",
+      "Full opponent army list.",
+      "Auto-updates with a tap-to-refresh bar, plus a manual “Check for updates”.",
+    ] },
+  ];
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
   const UNIT_VERSION = 4;  // bump to re-apply corrected unit profiles to saved armies
@@ -1426,6 +1444,17 @@
     save(); render();
     flash("Restored " + armies.length + " army/ies.");
   }
+  function changelogModal() {
+    const body = el("div", { class: "changelog" });
+    for (const rel of CHANGELOG) {
+      body.append(el("div", { class: "clrel" }, [
+        el("div", { class: "clhead" }, [el("b", {}, "v" + rel.v), el("span", { class: "muted small" }, rel.date)]),
+        el("ul", {}, rel.notes.map((n) => el("li", { class: "small" }, n))),
+      ]));
+    }
+    openModal("What's new", body, [el("button", { class: "primary", onclick: closeModal }, "Close")]);
+  }
+
   function helpModal() {
     const body = el("div", { class: "help" });
     body.innerHTML =
@@ -1496,7 +1525,8 @@
     const tr = $("#tabRoster"); if (tr) tr.addEventListener("click", () => setView("roster"));
     const ts = $("#tabScoring"); if (ts) ts.addEventListener("click", () => setView("scoring"));
     const bs = $("#btnScoring"); if (bs) bs.addEventListener("click", () => setView("scoring"));
-    const ver = $("#appVer"); if (ver) ver.textContent = "ChaosTracker26 · " + APP_VERSION + " · " + APP_DATE;
+    const ver = $("#appVer"); if (ver) ver.textContent = "ChaosTracker26 · v" + APP_VERSION + " · " + APP_DATE;
+    const bcl = $("#btnChangelog"); if (bcl) bcl.addEventListener("click", changelogModal);
     // menu open/close
     const menuPanel = $("#menuPanel");
     const toggleMenu = (open) => { if (!menuPanel) return; const show = open == null ? menuPanel.hasAttribute("hidden") : open; if (show) menuPanel.removeAttribute("hidden"); else menuPanel.setAttribute("hidden", ""); };
