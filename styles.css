@@ -614,3 +614,10 @@ body[data-theme="highelves"] button.big.roll { background: linear-gradient(180de
 .secstep button:disabled { opacity: 0.3; }
 .seccount { min-width: 1.8em; text-align: center; }
 .secrow2.per { grid-template-columns: 5.4rem 1fr 5.4rem 1.6rem; }
+
+/* ---- Scoring: collapsible objectives panel + editable secondary VP -------- */
+details.objpanel > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+details.objpanel > summary::-webkit-details-marker { display: none; }
+.objsummtot { font-weight: 700; color: var(--brass); }
+.secvpedit { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; }
+.secvpedit .scoreinput.tiny { width: 3.4em; text-align: center; padding: 4px 6px; }

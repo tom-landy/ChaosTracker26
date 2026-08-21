@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v55"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v56"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -692,10 +692,13 @@
             el("button", { class: "secplus", onclick: () => { st[side] = (num(st[side]) || 0) + 1; save(); render(); } }, "＋"),
           ]);
         };
-        const sub = (num(s.vp) || 0) + (per ? " VP/turn" : " VP");
+        const vpEdit = el("div", { class: "secvpedit" }, [
+          el("input", { class: "scoreinput tiny", type: "number", inputmode: "numeric", value: s.vp, onchange: (e) => { s.vp = e.target.value; save(); render(); } }),
+          el("span", { class: "muted small" }, per ? "VP/turn" : "VP"),
+        ]);
         secRows.push(el("div", { class: "secrow2" + (per ? " per" : "") }, [
           control("me"),
-          el("div", { class: "secname" }, [el("b", {}, s.name), el("span", { class: "muted small" }, sub)]),
+          el("div", { class: "secname" }, [el("b", {}, s.name), vpEdit]),
           control("them"),
           el("button", { class: "icon secdel", title: "Remove secondary", onclick: () => { g.secondaries = g.secondaries.filter((x) => x !== s); if (g.secDone) delete g.secDone[s.id]; save(); render(); } }, "✕"),
         ]));
@@ -728,12 +731,22 @@
       el("button", { class: "chip", onclick: () => openGameSetup(sc, g) }, "✎ Edit"),
     ]);
 
-    return el("div", { class: "objpanel" }, [
-      el("div", { class: "objpanelhead" }, "🎯 Objectives & secondaries"),
+    // Collapsible: many missions have no objectives, so keep it out of the way
+    // and only open it automatically once objectives/secondaries are in play.
+    const om = objVP(g, "me"), ot = objVP(g, "them");
+    const active = secondaries.length > 0 || om > 0 || ot > 0;
+    const det = el("details", { class: "objpanel" });
+    if (active) det.setAttribute("open", "");
+    det.append(
+      el("summary", { class: "objpanelhead" }, [
+        el("span", {}, "🎯 Objectives & secondaries"),
+        (om || ot) ? el("span", { class: "objsummtot" }, "You " + om + " · Them " + ot) : el("span", { class: "muted small objsummtot" }, "tap to add"),
+      ]),
       setupLine,
       el("div", { class: "bigcols" }, [col("me", "YOU", "you"), col("them", "THEM", "them")]),
-      secSection,
-    ]);
+      secSection
+    );
+    return det;
   }
 
   function statCell(label, val, base, lowerBetter) {
