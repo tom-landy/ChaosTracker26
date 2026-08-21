@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v53"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v54"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -382,25 +382,24 @@
     "Other",
   ];
 
-  // Named scenarios (from the Matched Play Guide / Warfare 2026 pack). Send me
-  // the full guide's mission list and I'll complete this.
+  // The six Matched Play Guide scenarios.
   const SCENARIO_PRESETS = [
     "Upon the Field of Glory",
-    "A Chance Encounter",
     "King of the Hill",
+    "Drawn Battlelines",
+    "Close Quarters",
+    "A Chance Encounter",
+    "Encirclement",
   ];
 
-  // Preset secondary objectives offered in the game-setup dropdown (editable VP;
-  // send me your Matched Play Guide's list and I'll match these exactly).
+  // Secondary objectives from the Matched Play Guide, with their VP values.
   const SECONDARY_PRESETS = [
-    { name: "Strategic location", vp: 100 },
-    { name: "King of the Hill", vp: 100 },
-    { name: "Baggage train", vp: 250 },
-    { name: "General slain", vp: 100 },
-    { name: "BSB killed", vp: 50 },
-    { name: "BSB captured", vp: 100 },
-    { name: "Standard captured", vp: 50 },
-    { name: "Table quarter", vp: 100 },
+    { name: "Strategic location (per turn held)", vp: 30 },
+    { name: "Domination — quarter held", vp: 100 },
+    { name: "Special feature (held at end)", vp: 200 },
+    { name: "Baggage train — held at end", vp: 100 },
+    { name: "Baggage train — destroyed enemy's", vp: 250 },
+    { name: "King of the Hill (per turn held)", vp: 100 },
   ];
 
   function openGameSetup(sc, game) {
@@ -452,10 +451,8 @@
     { label: "Fleeing at game end (½ pts)", pts: "" },
     { label: "Reduced to ≤25% (½ pts)", pts: "" },
     { label: "General slain", pts: 100 },
-    { label: "BSB killed", pts: 50 },
-    { label: "BSB captured", pts: 100 },
+    { label: "BSB slain / fled", pts: 50 },
     { label: "Standard captured", pts: 50 },
-    { label: "Objective", pts: "" },
   ];
   // Guided VP builder: rows of {label, pts} that sum into the My/Their VP field.
   function vpTallyModal(g, which, onDone) {
