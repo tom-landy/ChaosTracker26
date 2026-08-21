@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v47"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v48"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -352,6 +352,19 @@
 
   // Setup dialog shown when adding (or editing) a game — pick the mission's VP
   // values and whether baggage trains are in use, then lock them in.
+  // Preset secondary objectives offered in the game-setup dropdown (editable VP;
+  // send me your Matched Play Guide's list and I'll match these exactly).
+  const SECONDARY_PRESETS = [
+    { name: "Strategic location", vp: 100 },
+    { name: "King of the Hill", vp: 100 },
+    { name: "Baggage train", vp: 250 },
+    { name: "General slain", vp: 100 },
+    { name: "BSB killed", vp: 50 },
+    { name: "BSB captured", vp: 100 },
+    { name: "Standard captured", vp: 50 },
+    { name: "Table quarter", vp: 100 },
+  ];
+
   function openGameSetup(sc, game) {
     const isNew = !game;
     const g = game || newGame(sc);
@@ -383,7 +396,16 @@
       });
     }
     drawSecs();
-    const addSecBtn = el("button", { class: "chip", onclick: () => { secs.push({ id: "s" + Date.now().toString(36) + secs.length, name: "", vp: "" }); drawSecs(); } }, "＋ Add secondary");
+    const addSec = (name, vp) => { secs.push({ id: "s" + Date.now().toString(36) + secs.length, name: name || "", vp: vp == null ? "" : String(vp) }); drawSecs(); };
+    const addSecSel = el("select", { class: "scoreinput", onchange: (e) => {
+      const v = e.target.value; if (!v) return;
+      if (v === "__custom") addSec("", "");
+      else { const p = SECONDARY_PRESETS.find((x) => x.name === v); addSec(p ? p.name : v, p ? p.vp : ""); }
+      e.target.value = "";
+    } });
+    addSecSel.append(el("option", { value: "" }, "＋ Add a secondary…"));
+    for (const p of SECONDARY_PRESETS) addSecSel.append(el("option", { value: p.name }, p.name + " (" + p.vp + " VP)"));
+    addSecSel.append(el("option", { value: "__custom" }, "Custom…"));
 
     const body = el("div", { class: "setupform" }, [
       el("div", { class: "setuprow2" }, [field("Round", roundIn), field("Their army", facSel)]),
@@ -394,9 +416,9 @@
       el("label", { class: "bagchk full" }, [bagChk, el("span", {}, "Baggage trains in use")]),
       bagValWrap,
       el("div", { class: "setupsep" }, "Secondary objectives (optional)"),
-      el("p", { class: "muted small" }, "Each secondary becomes its own ＋ button in the game."),
+      el("p", { class: "muted small" }, "Pick from the list (or Custom) — each becomes its own ＋ button in the game. Edit the VP to match your mission."),
       secList,
-      addSecBtn,
+      addSecSel,
     ]);
     const start = el("button", { class: "primary", onclick: () => {
       g.round = roundIn.value.trim() || g.round;
