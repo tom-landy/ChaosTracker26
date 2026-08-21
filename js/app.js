@@ -10,28 +10,28 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "1.6"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
+  const APP_VERSION = "1.06"; // shown in the footer; matches the service-worker cache. Bump the .x each release.
   const APP_DATE = "2026-08-21"; // release date shown in the footer for a quick freshness check
   // Newest first. Add an entry (and bump APP_VERSION's .x) with every release.
   const CHANGELOG = [
-    { v: "1.6", date: "2026-08-21", notes: [
+    { v: "1.06", date: "2026-08-21", notes: [
       "Scoring: per-turn objectives (Strategic Location, King of the Hill) are back to a simple running tally — tap YOU/THEM once for each marker you score, any turn (they're scored at both players' turn-ends), with a − undo. One widget handles all markers across the whole game.",
     ] },
-    { v: "1.5", date: "2026-08-21", notes: [
+    { v: "1.05", date: "2026-08-21", notes: [
       "Scoring: added always-on common scorers to every game — Kill points (number field, with the ⚖ tally), Banners (± in 50s), and Enemy General slain (opt-in toggle for 100). These feed the total automatically.",
       "YOU / THEM buttons now share a fixed, equal width; per-turn objectives keep their undo on its own aligned row.",
       "Kill points moved out of the collapsed panel (now always on); that panel is just Result & notes.",
     ] },
-    { v: "1.4", date: "2026-08-21", notes: [
+    { v: "1.04", date: "2026-08-21", notes: [
       "Scoring: per-turn objectives now work turn-by-turn — tap YOU/THEM to mark who holds it this turn, and pressing “Next ▶” banks that turn's points and clears the selection for the new turn (past turns stay locked in). Fixed a stray “null” showing above the secondaries, and the “secondarys” typo.",
     ] },
-    { v: "1.3", date: "2026-08-21", notes: [
+    { v: "1.03", date: "2026-08-21", notes: [
       "Scoring: fixed the summary totals (games / record / VP / tournament points) so the numbers are laid out in a tidy grid and no longer cramped after the larger UI.",
     ] },
-    { v: "1.2", date: "2026-08-21", notes: [
+    { v: "1.02", date: "2026-08-21", notes: [
       "Scoring: bigger, higher-contrast “large touch” styling throughout — chunkier buttons, larger numbers and text, more spacing for easy tapping on a phone.",
     ] },
-    { v: "1.1", date: "2026-08-21", notes: [
+    { v: "1.01", date: "2026-08-21", notes: [
       "Scoring: redesigned secondary objectives for mobile — each is now its own block with the name & VP as a header and big YOU / THEM buttons underneath (bigger, easier tap targets).",
     ] },
     { v: "1.0", date: "2026-08-21", notes: [

@@ -1,15 +1,15 @@
 # Changelog
 
-Versioning: from **1.0** onward, each release bumps the `x` in `1.x` by one.
+Versioning: from **1.0** onward, each release bumps the last digit (1.0 → 1.01 → 1.02 …).
 The same notes appear in the app under **What's new** (next to the version in the footer).
 
-## v1.6 — 2026-08-21
+## v1.06 — 2026-08-21
 - Scoring: per-turn objectives (Strategic Location, King of the Hill) are back to a
   simple running tally — tap **YOU/THEM** once for each marker you score, any turn
   (they're scored at both players' turn-ends), with a **− undo**. One widget handles
   every marker across the whole game (no re-adding widgets each turn).
 
-## v1.5 — 2026-08-21
+## v1.05 — 2026-08-21
 - Scoring: added always-on **common scorers** to every game — **Kill points**
   (number field with the ⚖ tally), **Banners** (± in 50s) and **Enemy General
   slain** (opt-in toggle for 100). All feed the total automatically.
@@ -18,21 +18,21 @@ The same notes appear in the app under **What's new** (next to the version in th
 - Kill points moved out of the collapsed panel (now always on); that panel is
   just Result & notes.
 
-## v1.4 — 2026-08-21
+## v1.04 — 2026-08-21
 - Scoring: per-turn objectives now work turn-by-turn — tap **YOU/THEM** to mark who
   holds it this turn; pressing **Next ▶** banks that turn's points and clears the
   selection for the new turn, while past turns stay locked in.
 - Fixed a stray "null" that showed above the secondaries, and the "secondarys" typo.
 
-## v1.3 — 2026-08-21
+## v1.03 — 2026-08-21
 - Scoring: fixed the summary totals (games / record / VP / tournament points) so
   the numbers sit in a tidy grid and are no longer cramped after the larger UI.
 
-## v1.2 — 2026-08-21
+## v1.02 — 2026-08-21
 - Scoring: bigger, higher-contrast "large touch" styling throughout — chunkier
   buttons, larger numbers and text, and more spacing for easy tapping on a phone.
 
-## v1.1 — 2026-08-21
+## v1.01 — 2026-08-21
 - Scoring: redesigned secondary objectives for mobile — each is now its own block
   with the name & VP as a header on top and big **YOU / THEM** buttons underneath
   (bigger, easier tap targets). Per-turn objectives tap to add (with an undo);
@@ -65,6 +65,6 @@ First versioned release. Consolidates all development so far.
 Template for the next release — copy, fill in, and bump APP_VERSION + the CACHE + the
 CHANGELOG array in js/app.js to match.
 
-## v1.1 — YYYY-MM-DD
+## v1.07 — YYYY-MM-DD
 - ...
 -->
