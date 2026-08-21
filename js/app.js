@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v51"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v52"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -360,6 +360,14 @@
 
   // Setup dialog shown when adding (or editing) a game — pick the mission's VP
   // values and whether baggage trains are in use, then lock them in.
+  // Named scenarios (from the Matched Play Guide / Warfare 2026 pack). Send me
+  // the full guide's mission list and I'll complete this.
+  const SCENARIO_PRESETS = [
+    "Upon the Field of Glory",
+    "A Chance Encounter",
+    "King of the Hill",
+  ];
+
   // Preset secondary objectives offered in the game-setup dropdown (editable VP;
   // send me your Matched Play Guide's list and I'll match these exactly).
   const SECONDARY_PRESETS = [
@@ -382,13 +390,22 @@
     const oppIn = el("input", { class: "scoreinput", placeholder: "Name", value: g.opponent || "" });
     const facSel = el("select", { class: "scoreinput" });
     for (const f of factionOpts) facSel.append(el("option", { value: f, selected: f === g.oppFaction ? "selected" : null }, f || "—"));
-    const scenIn = el("input", { class: "scoreinput", placeholder: "e.g. King of the Hill", value: g.scenario || "" });
+    // Scenario: dropdown of named missions + Custom… (free text).
+    const isCustomScen = g.scenario && !SCENARIO_PRESETS.includes(g.scenario);
+    const scenSel = el("select", { class: "scoreinput" });
+    scenSel.append(el("option", { value: "" }, "—"));
+    for (const s of SCENARIO_PRESETS) scenSel.append(el("option", { value: s, selected: s === g.scenario ? "selected" : null }, s));
+    scenSel.append(el("option", { value: "__custom", selected: isCustomScen ? "selected" : null }, "Custom…"));
+    const scenCustom = el("input", { class: "scoreinput", placeholder: "Mission name", value: isCustomScen ? g.scenario : "" });
+    const scenCustomWrap = el("div", { class: "scencustom" }, [scenCustom]);
+    const syncScen = () => { scenCustomWrap.style.display = scenSel.value === "__custom" ? "" : "none"; };
+    scenSel.addEventListener("change", syncScen); syncScen();
     const objIn = el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: g.objVal == null ? "100" : g.objVal });
 
     const body = el("div", { class: "setupform" }, [
       el("div", { class: "setuprow2" }, [field("Round", roundIn), field("Their army", facSel)]),
       field("Opponent", oppIn),
-      field("Scenario / mission", scenIn),
+      field("Scenario / mission", el("div", {}, [scenSel, scenCustomWrap])),
       el("div", { class: "setupsep" }, "Victory Points this game"),
       field("Objective VP (each claim)", objIn),
       el("p", { class: "muted small" }, "Add secondary objectives on the game screen once you start."),
@@ -397,7 +414,7 @@
       g.round = roundIn.value.trim() || g.round;
       g.opponent = oppIn.value.trim();
       g.oppFaction = facSel.value;
-      g.scenario = scenIn.value.trim();
+      g.scenario = scenSel.value === "__custom" ? scenCustom.value.trim() : scenSel.value;
       g.objVal = objIn.value === "" ? "0" : objIn.value;
       if (isNew) sc.games.push(g);
       save(); closeModal(); render();

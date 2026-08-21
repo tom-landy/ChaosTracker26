@@ -603,3 +603,5 @@ body[data-theme="highelves"] button.big.roll { background: linear-gradient(180de
 .secname b { display: block; line-height: 1.2; }
 .seccb { width: 26px; height: 26px; justify-self: center; accent-color: var(--good); cursor: pointer; }
 .secrow2 .seccb:last-of-type { accent-color: var(--bad); }
+
+.scencustom { margin-top: 6px; }
