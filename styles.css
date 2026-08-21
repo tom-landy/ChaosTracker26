@@ -695,3 +695,10 @@ details.objpanel > summary::-webkit-details-marker { display: none; }
 .addgame { padding: 14px 22px; }
 /* copy results / edit chips */
 .objsetupline .chip, .scoreactions .ghost { padding: 8px 14px; font-size: 14px; }
+
+/* ==== v1.3 — readable summary totals (grid, numbers fit) ================= */
+.scoresum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.scoretile { min-width: 0; padding: 12px 6px; }
+.scoretile b { font-size: 1.55rem; line-height: 1.1; white-space: nowrap; }
+.scoretile span { font-size: 12.5px; line-height: 1.1; }
+@media (min-width: 560px) { .scoresum { grid-template-columns: repeat(6, 1fr); } }
