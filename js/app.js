@@ -10,7 +10,7 @@
   const P = window.WOC_PARSER;
   function factionData(f) { return (window.FACTIONS && window.FACTIONS[f]) || window.WOC_DATA; }
   const STORE_KEY = "chaostracker26.v1";
-  const APP_VERSION = "v56"; // shown in the footer; matches the service-worker cache
+  const APP_VERSION = "v57"; // shown in the footer; matches the service-worker cache
   const APP_DATE = "2026-08-02"; // release date shown in the footer for a quick freshness check
   const GAZE_VERSION = 2; // bump to roll out a corrected default Gaze table
   const MOUNT_VERSION = 2; // bump to re-apply corrected mount profiles to saved armies
@@ -362,7 +362,7 @@
   // VP-difference table, where the table already captures the whole result).
   function gameSec(g) { return num(g.secpts) === "" ? 0 : num(g.secpts); }
   function gameTotal(g, scale) { const base = gameTP(g, scale); if (base == null) return null; return base + (scale.table ? 0 : gameSec(g)); }
-  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objVal: "100", secondaries: [], secDone: {}, addsMine: [], addsThem: [] }; }
+  function newGame(sc) { return { id: "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), round: String((sc.games.length || 0) + 1), opponent: "", oppFaction: "", scenario: "", myVP: "", oppVP: "", resultOverride: "", secondary: "", secpts: "", tp: "", notes: "", objMine: "", objThem: "", objOn: false, objVal: "100", secondaries: [], secDone: {}, addsMine: [], addsThem: [] }; }
 
   // Setup dialog shown when adding (or editing) a game — pick the mission's VP
   // values and whether baggage trains are in use, then lock them in.
@@ -430,20 +430,27 @@
     const syncScen = () => { scenCustomWrap.style.display = scenSel.value === "__custom" ? "" : "none"; };
     scenSel.addEventListener("change", syncScen); syncScen();
     const objIn = el("input", { class: "scoreinput", type: "number", inputmode: "numeric", placeholder: "0", value: g.objVal == null ? "100" : g.objVal });
+    // "Does this game have a simple claimable objective?" — reveals its points.
+    const objChk = el("input", { type: "checkbox", checked: g.objOn ? "checked" : null });
+    const objValWrap = field("Objective VP (each claim)", objIn);
+    const syncObj = () => { objValWrap.style.display = objChk.checked ? "" : "none"; };
+    objChk.addEventListener("change", syncObj); syncObj();
 
     const body = el("div", { class: "setupform" }, [
       el("div", { class: "setuprow2" }, [field("Round", roundIn), field("Their army", facSel)]),
       field("Opponent", oppIn),
       field("Scenario / mission", el("div", {}, [scenSel, scenCustomWrap])),
       el("div", { class: "setupsep" }, "Victory Points this game"),
-      field("Objective VP (each claim)", objIn),
-      el("p", { class: "muted small" }, "Add secondary objectives on the game screen once you start."),
+      el("label", { class: "bagchk full" }, [objChk, el("span", {}, "This game has a claimable objective")]),
+      objValWrap,
+      el("p", { class: "muted small" }, "Add secondary objectives (each with its own VP) on the game screen once you start — use them for objectives worth different amounts."),
     ]);
     const start = el("button", { class: "primary", onclick: () => {
       g.round = roundIn.value.trim() || g.round;
       g.opponent = oppIn.value.trim();
       g.oppFaction = facSel.value;
       g.scenario = scenSel.value === "__custom" ? scenCustom.value.trim() : scenSel.value;
+      g.objOn = objChk.checked;
       g.objVal = objIn.value === "" ? "0" : objIn.value;
       if (isNew) sc.games.push(g);
       save(); closeModal(); render();
@@ -669,6 +676,7 @@
         el("button", { class: "bigbtn undo", disabled: stack.length ? null : "disabled", onclick: () => undo(side) }, "↩ Undo"),
       ]);
     };
+    const showBig = !!g.objOn; // generic objective columns only when it's in play
 
     // Secondaries: "once" = a per-side tick; "perturn" = tap ＋ each turn held.
     // Added/removed right here on the game screen.
@@ -724,7 +732,7 @@
     // Locked-in setup summary, with an edit affordance.
     const bits = [];
     if (g.scenario) bits.push(g.scenario);
-    bits.push("Objective " + objVal + " VP");
+    if (showBig) bits.push("Objective " + objVal + " VP");
     if (secondaries.length) bits.push(secondaries.length + " secondary" + (secondaries.length > 1 ? "s" : ""));
     const setupLine = el("div", { class: "objsetupline" }, [
       el("span", { class: "muted small" }, bits.join("  ·  ")),
@@ -734,7 +742,7 @@
     // Collapsible: many missions have no objectives, so keep it out of the way
     // and only open it automatically once objectives/secondaries are in play.
     const om = objVP(g, "me"), ot = objVP(g, "them");
-    const active = secondaries.length > 0 || om > 0 || ot > 0;
+    const active = showBig || secondaries.length > 0 || om > 0 || ot > 0;
     const det = el("details", { class: "objpanel" });
     if (active) det.setAttribute("open", "");
     det.append(
@@ -743,7 +751,7 @@
         (om || ot) ? el("span", { class: "objsummtot" }, "You " + om + " · Them " + ot) : el("span", { class: "muted small objsummtot" }, "tap to add"),
       ]),
       setupLine,
-      el("div", { class: "bigcols" }, [col("me", "YOU", "you"), col("them", "THEM", "them")]),
+      showBig ? el("div", { class: "bigcols" }, [col("me", "YOU", "you"), col("them", "THEM", "them")]) : null,
       secSection
     );
     return det;
